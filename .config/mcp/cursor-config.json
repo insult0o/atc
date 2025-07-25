@@ -1,0 +1,74 @@
+{
+  "mcpServers": {
+    "everything": {
+      "command": "node",
+      "args": ["/home/insulto/atc/mcp-servers/official/src/everything/dist/index.js", "stdio"],
+      "env": {}
+    },
+    "fetch": {
+      "command": "/home/insulto/atc/mcp-servers/venv/bin/python",
+      "args": ["-m", "mcp_server_fetch"],
+      "cwd": "/home/insulto/atc/mcp-servers/official/src/fetch",
+      "env": {
+        "USER_AGENT": "MCP-Fetch/1.0",
+        "IGNORE_ROBOTS_TXT": "false"
+      }
+    },
+    "filesystem": {
+      "command": "node",
+      "args": ["/home/insulto/atc/mcp-servers/official/src/filesystem/dist/index.js", "/home/insulto/atc"],
+      "env": {
+        "WORKSPACE_ROOT": "/home/insulto/atc"
+      }
+    },
+    "git": {
+      "command": "/home/insulto/atc/mcp-servers/venv/bin/python",
+      "args": ["-m", "mcp_server_git", "-r", "/home/insulto/atc"],
+      "cwd": "/home/insulto/atc/mcp-servers/official/src/git",
+      "env": {}
+    },
+    "memory": {
+      "command": "node",
+      "args": ["/home/insulto/atc/mcp-servers/official/src/memory/dist/index.js"],
+      "env": {
+        "STORAGE_PATH": "/home/insulto/atc/memory-storage.json"
+      }
+    },
+    "sequentialthinking": {
+      "command": "node",
+      "args": ["/home/insulto/atc/mcp-servers/official/src/sequentialthinking/dist/index.js"],
+      "env": {
+        "TASK_STORAGE": "/home/insulto/atc/sequential-tasks.json"
+      }
+    },
+    "time": {
+      "command": "/home/insulto/atc/mcp-servers/venv/bin/python",
+      "args": ["-m", "mcp_server_time"],
+      "cwd": "/home/insulto/atc/mcp-servers/official/src/time",
+      "env": {
+        "LOCAL_TIMEZONE": "UTC"
+      }
+    },
+    "openrouter": {
+      "command": "npx",
+      "args": ["@smithery/cli", "connect", "@mcpserver/openrouterai", "--api-key", "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"],
+      "env": {
+        "OPENAI_API_KEY": "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"
+      }
+    },
+    "webflow": {
+      "command": "npx",
+      "args": ["@smithery/cli", "connect", "@webflow/mcp-server", "--api-key", "a1e839550f18e4c77329eed9ed1514987841b9d6b1c97620837748e42386b4da"],
+      "env": {
+        "WEBFLOW_API_KEY": "a1e839550f18e4c77329eed9ed1514987841b9d6b1c97620837748e42386b4da"
+      }
+    },
+    "taskmanager": {
+      "command": "npx",
+      "args": ["@kazuph/mcp-taskmanager", "--mcp"],
+      "env": {
+        "TASK_STORAGE_PATH": "/home/insulto/atc/tasks.json"
+      }
+    }
+  }
+} 
