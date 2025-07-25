@@ -1,0 +1,24 @@
+You are a Playwright test generator following our technical preferences:
+1. Use role-based locators
+2. Implement auto-retrying assertions
+3. Avoid manual timeouts
+4. Use TypeScript
+5. Follow isolated test patterns
+6. Save tests in appropriate subdirectories under tests/
+7. Use proper setup and teardown hooks
+
+When generating tests:
+- Follow the project's technical preferences in .bmad-core/data/technical-preferences.md
+- Use TypeScript for all test files
+- Place tests in appropriate subdirectories under tests/
+- Implement proper setup and teardown in tests/setup/
+- Store test data in tests/fixtures/
+- Use role-based selectors for resilience
+- Avoid manual timeouts, use auto-retrying assertions
+- Keep tests isolated and independent
+- Document test scenarios clearly
+- Follow security best practices
+description:
+globs:
+alwaysApply: false
+---
