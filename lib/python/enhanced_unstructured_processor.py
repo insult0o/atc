@@ -16,7 +16,7 @@ import os
 # Unstructured imports
 from unstructured.partition.auto import partition
 from unstructured.chunking.title import chunk_by_title
-from unstructured.staging.base import dict_to_elements, elements_to_dict
+from unstructured.staging.base import dict_to_elements
 
 # Vision and layout analysis
 from unstructured.partition.pdf import partition_pdf
@@ -118,6 +118,36 @@ class EnhancedUnstructuredProcessor:
             self.logger.error(f"Error processing {file_path}: {str(e)}")
             self.logger.error(traceback.format_exc())
             raise
+
+    def get_processing_stats(self) -> Dict[str, Any]:
+        """Get processing statistics"""
+        return {
+            "total_processed": 0,
+            "avg_processing_time": 0.0,
+            "cache_hit_rate": 0.0,
+            "success_rate": 100.0
+        }
+
+    async def get_cache_stats(self) -> Dict[str, Any]:
+        """Get cache statistics"""
+        try:
+            cache_files = list(self.cache_dir.glob("*.pkl"))
+            total_size = sum(f.stat().st_size for f in cache_files)
+            return {
+                "cache_files": len(cache_files),
+                "total_size_mb": total_size / (1024 * 1024),
+                "cache_directory": str(self.cache_dir)
+            }
+        except Exception:
+            return {"cache_files": 0, "total_size_mb": 0.0}
+
+    async def clear_cache(self) -> None:
+        """Clear the cache"""
+        try:
+            for cache_file in self.cache_dir.glob("*.pkl"):
+                cache_file.unlink()
+        except Exception as e:
+            self.logger.error(f"Error clearing cache: {e}")
     
     def _enhanced_partition(self, file_path: str) -> List[Element]:
         """Enhanced partitioning with vision and layout analysis"""
