@@ -4,8 +4,11 @@ import React, { useState, useCallback, useRef, useEffect } from 'react';
 import { PDFViewer } from './PDFViewer';
 import { ExtractedContentViewer } from './ExtractedContentViewer';
 import { ZoneHighlighter } from './ZoneHighlighter';
+import { PDFHighlighter } from './PDFHighlighter';
+import { ContentHighlighter } from './ContentHighlighter';
 import { useSynchronizedScroll } from '../../hooks/useSynchronizedScroll';
 import { useViewerPerformance } from '../../hooks/useViewerPerformance';
+import { CoordinateMapper } from '../../../lib/highlighting/coordinate-mapper';
 import { Button } from '../../../components/ui/button';
 import { 
   Maximize2, 
@@ -14,7 +17,9 @@ import {
   EyeOff,
   Smartphone,
   Monitor,
-  GripVertical
+  GripVertical,
+  Link,
+  Unlink
 } from 'lucide-react';
 import type { Zone } from '@pdf-platform/shared';
 

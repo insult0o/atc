@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, Suspense } from 'react';
 import { useSearchParams } from 'next/navigation';
 import { DualPaneViewer } from '../../components/viewer/DualPaneViewer';
 import { useDocument } from '../../hooks/useDocument';
@@ -9,8 +9,8 @@ import { useWebSocket } from '../../hooks/useWebSocket';
 import type { Zone } from '@pdf-platform/shared';
 import type { ExtractedContent } from '../../components/viewer/DualPaneViewer';
 
-// Example page demonstrating the dual-pane viewer
-export default function DualPaneViewerPage() {
+// Component that uses useSearchParams
+function DualPaneViewerContent() {
   const searchParams = useSearchParams();
   const documentIdFromUrl = searchParams.get('document');
   const [documentId] = useState(documentIdFromUrl || 'example-doc-123');
@@ -179,5 +179,21 @@ Key Features:
         />
       </main>
     </div>
+  );
+}
+
+// Main page component with Suspense boundary
+export default function DualPaneViewerPage() {
+  return (
+    <Suspense fallback={
+      <div className="h-screen flex items-center justify-center">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto"></div>
+          <p className="mt-4 text-gray-600">Loading viewer...</p>
+        </div>
+      </div>
+    }>
+      <DualPaneViewerContent />
+    </Suspense>
   );
 }
