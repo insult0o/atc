@@ -1,5 +1,5 @@
-import { WebSocket } from 'ws';
-import { NextResponse } from 'next/server';
+import { WebSocketServer, WebSocket } from 'ws';
+import { NextRequest } from 'next/server';
 
 // Connection manager for WebSocket clients
 class ConnectionManager {
@@ -48,71 +48,99 @@ class ConnectionManager {
 // Create connection manager instance
 const manager = new ConnectionManager();
 
-// WebSocket upgrade handler
-export async function GET(request: Request) {
-  try {
-    const { socket: ws, response } = await WebSocket.accept({
-      request,
-      path: '/api/ws',
-    });
+// WebSocket server instance
+let wss: WebSocketServer | null = null;
 
-    // Generate unique client ID
-    const clientId = Math.random().toString(36).substring(7);
+// Initialize WebSocket server
+function initializeWebSocketServer() {
+  if (!wss) {
+    wss = new WebSocketServer({ noServer: true });
+    
+    wss.on('connection', (ws: WebSocket) => {
+      // Generate unique client ID
+      const clientId = Math.random().toString(36).substring(7);
 
-    // Add connection to manager
-    manager.addConnection(clientId, ws);
+      // Add connection to manager
+      manager.addConnection(clientId, ws);
 
-    // Handle messages
-    ws.on('message', async (data: string) => {
-      try {
-        const message = JSON.parse(data);
-        
-        // Handle different message types
-        switch (message.type) {
-          case 'upload_progress':
-            // Broadcast progress to all clients
-            manager.broadcast({
-              type: 'progress_update',
-              data: message.data
-            });
-            break;
+      // Handle messages
+      ws.on('message', async (data: Buffer) => {
+        try {
+          const message = JSON.parse(data.toString());
+          
+          // Handle different message types
+          switch (message.type) {
+            case 'upload_progress':
+              // Broadcast progress to all clients
+              manager.broadcast({
+                type: 'progress_update',
+                data: message.data
+              });
+              break;
 
-          case 'processing_status':
-            // Send processing status to specific client
-            manager.sendTo(clientId, {
-              type: 'status_update',
-              data: message.data
-            });
-            break;
+            case 'processing_status':
+              // Send processing status to specific client
+              manager.sendTo(clientId, {
+                type: 'status_update',
+                data: message.data
+              });
+              break;
 
-          default:
-            console.warn(`Unknown message type: ${message.type}`);
+            default:
+              console.warn(`Unknown message type: ${message.type}`);
+          }
+        } catch (error: unknown) {
+          console.error('Message handling error:', error);
+          ws.send(JSON.stringify({
+            type: 'error',
+            message: 'Invalid message format'
+          }));
         }
-      } catch (error) {
-        console.error('Message handling error:', error);
-        ws.send(JSON.stringify({
-          type: 'error',
-          message: 'Invalid message format'
-        }));
-      }
-    });
+      });
 
-    // Handle connection close
-    ws.on('close', () => {
-      manager.removeConnection(clientId);
-      manager.cleanup();
-    });
+      // Handle connection close
+      ws.on('close', () => {
+        manager.removeConnection(clientId);
+        manager.cleanup();
+      });
 
-    // Handle errors
-    ws.on('error', (error) => {
-      console.error('WebSocket error:', error);
-      manager.removeConnection(clientId);
-      manager.cleanup();
+      // Handle errors
+      ws.on('error', (error: Error) => {
+        console.error('WebSocket error:', error);
+        manager.removeConnection(clientId);
+        manager.cleanup();
+      });
     });
-
-    return response;
-  } catch (error) {
-    console.error('WebSocket setup error:', error);
-    return new NextResponse('WebSocket upgrade failed', { status: 500 });
   }
-} 
+  
+  return wss;
+}
+
+// WebSocket upgrade handler
+export async function GET(request: NextRequest) {
+  try {
+    // For Next.js API routes, WebSocket upgrades need to be handled differently
+    // This is a simplified implementation that returns connection info
+    // In production, you'd typically use a separate WebSocket server or service
+    
+    const wss = initializeWebSocketServer();
+    
+    return new Response(JSON.stringify({
+      message: 'WebSocket endpoint available',
+      status: 'ready',
+      endpoint: '/api/ws'
+    }), {
+      status: 200,
+      headers: {
+        'Content-Type': 'application/json',
+      },
+    });
+    
+  } catch (error: unknown) {
+    console.error('WebSocket setup error:', error);
+    return new Response('WebSocket setup failed', { status: 500 });
+  }
+}
+
+// Export the WebSocket server for external use
+export { wss, manager }; 

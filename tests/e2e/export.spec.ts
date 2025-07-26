@@ -137,7 +137,10 @@ test.describe('Export System', () => {
 
     // Verify history details
     const items = await page.locator('.history-item').all();
-    for (const [index, format] of ['fine_tune_jsonl', 'rag_json'].entries()) {
+    const formats = ['fine_tune_jsonl', 'rag_json'];
+    
+    for (let index = 0; index < formats.length; index++) {
+      const format = formats[index];
       const item = items[index];
       await expect(item.locator('.format')).toHaveText(format);
       await expect(item.locator('.status')).toHaveText('Completed');

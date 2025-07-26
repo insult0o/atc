@@ -1,19 +1,78 @@
-import { useCallback, useState } from 'react';
+import { useCallback, useState, useEffect } from 'react';
 import { useDropzone } from 'react-dropzone';
-import { Upload, File, AlertCircle } from 'lucide-react';
-import { cn } from '@/lib/utils';
-import { Progress } from '@/components/ui/progress';
-import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
+import { Upload, File, AlertCircle, Clock, CheckCircle } from 'lucide-react';
+import { cn } from '../../../lib/utils';
+import { Progress } from '../../../components/ui/progress';
+import { Alert, AlertDescription, AlertTitle } from '../../../components/ui/alert';
+import { useWebSocket } from '../../hooks/useWebSocket';
 
 interface UploadZoneProps {
-  onUpload: (file: File) => Promise<void>;
+  onUpload: (file: File) => Promise<{ documentId: string; document: any }>;
   maxSize?: number;
+  enableRealtime?: boolean;
 }
 
-export function UploadZone({ onUpload, maxSize = 100 * 1024 * 1024 }: UploadZoneProps) {
+export function UploadZone({ onUpload, maxSize = 100 * 1024 * 1024, enableRealtime = true }: UploadZoneProps) {
   const [uploading, setUploading] = useState(false);
   const [progress, setProgress] = useState(0);
   const [error, setError] = useState<string | null>(null);
+  const [processingStage, setProcessingStage] = useState<string>('');
+  const [processingProgress, setProcessingProgress] = useState(0);
+  const [documentId, setDocumentId] = useState<string | null>(null);
+  const [isCompleted, setIsCompleted] = useState(false);
+
+  // WebSocket connection for real-time processing updates
+  const { isConnected, sendMessage } = useWebSocket(
+    documentId ? `/api/ws?documentId=${documentId}` : '',
+    {
+      onMessage: handleWebSocketMessage,
+      onError: (error) => {
+        console.error('WebSocket error during upload:', error);
+      }
+    }
+  );
+
+  // Handle WebSocket messages for processing updates
+  function handleWebSocketMessage(message: { type: string; data?: any; message?: string }) {
+    console.log('Upload WebSocket message:', message);
+    
+    switch (message.type) {
+      case 'zone_detected':
+        setProcessingStage('Detecting content zones...');
+        if (message.data?.totalZones) {
+          setProcessingProgress(20); // Zone detection started
+        }
+        break;
+        
+      case 'zone_processing_started':
+        setProcessingStage('Processing detected zones...');
+        setProcessingProgress(40);
+        break;
+        
+      case 'zone_processing_progress':
+        setProcessingStage('Extracting content...');
+        if (message.data?.processingStatus) {
+          const { completedZones, totalZones } = message.data.processingStatus;
+          const progress = totalZones > 0 ? (completedZones / totalZones) * 60 + 40 : 40;
+          setProcessingProgress(Math.min(90, progress));
+        }
+        break;
+        
+      case 'document_processing_completed':
+        setProcessingStage('Processing complete!');
+        setProcessingProgress(100);
+        setIsCompleted(true);
+        setTimeout(() => {
+          setUploading(false);
+        }, 1500);
+        break;
+        
+      case 'system_error':
+        setError(message.data?.error || 'Processing error occurred');
+        setUploading(false);
+        break;
+    }
+  }
 
   const onDrop = useCallback(async (acceptedFiles: File[]) => {
     const file = acceptedFiles[0];
@@ -23,6 +82,10 @@ export function UploadZone({ onUpload, maxSize = 100 * 1024 * 1024 }: UploadZone
       setError(null);
       setUploading(true);
       setProgress(0);
+      setProcessingProgress(0);
+      setProcessingStage('');
+      setIsCompleted(false);
+      setDocumentId(null);
 
       // Validate file type
       if (file.type !== 'application/pdf') {
@@ -34,20 +97,43 @@ export function UploadZone({ onUpload, maxSize = 100 * 1024 * 1024 }: UploadZone
         throw new Error(`File size exceeds ${maxSize / (1024 * 1024)}MB limit`);
       }
 
-      // Create upload progress handler
-      const onProgress = (percent: number) => {
-        setProgress(percent);
-      };
+      // Simulate upload progress
+      setProcessingStage('Uploading file...');
+      for (let i = 0; i <= 100; i += 10) {
+        setProgress(i);
+        await new Promise(resolve => setTimeout(resolve, 100));
+      }
 
-      // Start upload
-      await onUpload(file);
-      setProgress(100);
+      // Start upload and get document ID
+      const result = await onUpload(file);
+      setDocumentId(result.documentId);
+      
+      if (enableRealtime) {
+        setProcessingStage('Initializing processing...');
+        setProcessingProgress(10);
+        
+        // Subscribe to processing updates
+        if (sendMessage) {
+          sendMessage({
+            type: 'subscribe_document',
+            data: { documentId: result.documentId }
+          });
+        }
+      } else {
+        // If real-time is disabled, mark as completed immediately
+        setProcessingStage('Upload complete!');
+        setProcessingProgress(100);
+        setIsCompleted(true);
+        setTimeout(() => {
+          setUploading(false);
+        }, 1000);
+      }
+      
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Upload failed');
-    } finally {
       setUploading(false);
     }
-  }, [maxSize, onUpload]);
+  }, [maxSize, onUpload, enableRealtime, sendMessage]);
 
   const { getRootProps, getInputProps, isDragActive } = useDropzone({
     onDrop,
