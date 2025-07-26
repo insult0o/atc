@@ -195,7 +195,7 @@ class EnhancedUnstructuredProcessor:
             )
             
             # Convert to dict format for processing
-            chunks_dict = elements_to_dict(chunked_elements)
+            chunks_dict = [element.to_dict() for element in chunked_elements]
             
             # Enhance chunks with semantic information
             enhanced_chunks = []

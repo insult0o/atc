@@ -117,14 +117,17 @@ async def process_document(
         # Cleanup
         os.unlink(temp_filename)
         
+        # Extract metadata with safe defaults
+        metadata = result.get("processing_metadata", {})
+        
         return ProcessingResult(
             filename=file.filename,
-            total_elements=len(result["elements"]),
-            processing_time_seconds=result["processing_metadata"]["processing_time_seconds"],
-            strategy=result["processing_metadata"]["strategy"],
-            cached=result["processing_metadata"]["cached"],
-            quality_score=result["processing_metadata"]["avg_quality"],
-            elements=result["elements"][:10]  # Return first 10 elements for API response
+            total_elements=len(result.get("elements", [])),
+            processing_time_seconds=metadata.get("processing_time_seconds", 0.0),
+            strategy=metadata.get("strategy", strategy),
+            cached=metadata.get("cached", False),
+            quality_score=metadata.get("avg_quality", 0.0),
+            elements=result.get("elements", [])[:10]  # Return first 10 elements for API response
         )
         
     except Exception as e:
