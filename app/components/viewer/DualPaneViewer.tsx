@@ -258,27 +258,35 @@ export function DualPaneViewer({
   const paneStyles = getPaneStyles();
 
   return (
-    <div className="dual-pane-viewer flex flex-col h-full bg-background">
+    <div className="dual-pane-viewer flex flex-col h-full bg-gradient-to-br from-slate-50 via-blue-50/30 to-indigo-50/20 dark:from-slate-950 dark:via-blue-950/30 dark:to-indigo-950/20">
       {/* Toolbar */}
-      <div className="viewer-toolbar flex items-center justify-between p-2 border-b bg-muted/50">
+      <div className="viewer-toolbar flex items-center justify-between p-4 backdrop-blur-xl bg-white/10 dark:bg-black/10 border-b border-white/20 dark:border-white/10">
         <div className="flex items-center gap-2">
           {/* Mobile pane switcher */}
           {viewerState.isMobileView && (
-            <div className="flex rounded-md shadow-sm">
+            <div className="flex rounded-xl shadow-lg backdrop-blur-sm bg-white/20 dark:bg-black/20 border border-white/30 dark:border-white/10">
               <Button
-                variant={viewerState.activeMobilePane === 'left' ? 'default' : 'outline'}
+                variant={viewerState.activeMobilePane === 'left' ? 'default' : 'ghost'}
                 size="sm"
                 onClick={() => switchMobilePane('left')}
-                className="rounded-r-none"
+                className={`rounded-r-none backdrop-blur-sm ${
+                  viewerState.activeMobilePane === 'left' 
+                    ? 'bg-gradient-to-r from-blue-500 to-purple-600 text-white shadow-lg' 
+                    : 'hover:bg-white/20 dark:hover:bg-black/20'
+                }`}
               >
                 <Smartphone className="w-4 h-4 mr-1" />
                 PDF
               </Button>
               <Button
-                variant={viewerState.activeMobilePane === 'right' ? 'default' : 'outline'}
+                variant={viewerState.activeMobilePane === 'right' ? 'default' : 'ghost'}
                 size="sm"
                 onClick={() => switchMobilePane('right')}
-                className="rounded-l-none"
+                className={`rounded-l-none backdrop-blur-sm ${
+                  viewerState.activeMobilePane === 'right' 
+                    ? 'bg-gradient-to-r from-blue-500 to-purple-600 text-white shadow-lg' 
+                    : 'hover:bg-white/20 dark:hover:bg-black/20'
+                }`}
               >
                 <Monitor className="w-4 h-4 mr-1" />
                 Content
@@ -288,9 +296,14 @@ export function DualPaneViewer({
           
           {/* Highlighting toggle */}
           <Button
-            variant={viewerState.highlightVisible ? 'default' : 'outline'}
+            variant="ghost"
             size="sm"
             onClick={toggleHighlighting}
+            className={`backdrop-blur-sm border transition-all duration-300 ${
+              viewerState.highlightVisible 
+                ? 'bg-gradient-to-r from-green-500/20 to-blue-500/20 border-green-500/30 text-green-700 dark:text-green-300 shadow-lg' 
+                : 'bg-white/10 dark:bg-black/10 border-white/20 dark:border-white/10 hover:bg-white/20 dark:hover:bg-black/20'
+            }`}
           >
             {viewerState.highlightVisible ? (
               <Eye className="w-4 h-4" />
@@ -306,10 +319,15 @@ export function DualPaneViewer({
           {!viewerState.isMobileView && (
             <>
               <Button
-                variant="outline"
+                variant="ghost"
                 size="sm"
                 onClick={() => toggleFullscreen('left')}
                 disabled={viewerState.fullscreenPane === 'right'}
+                className={`backdrop-blur-sm border transition-all duration-300 ${
+                  viewerState.fullscreenPane === 'left'
+                    ? 'bg-gradient-to-r from-blue-500/20 to-purple-500/20 border-blue-500/30 text-blue-700 dark:text-blue-300 shadow-lg'
+                    : 'bg-white/10 dark:bg-black/10 border-white/20 dark:border-white/10 hover:bg-white/20 dark:hover:bg-black/20'
+                } ${viewerState.fullscreenPane === 'right' ? 'opacity-50 cursor-not-allowed' : ''}`}
               >
                 {viewerState.fullscreenPane === 'left' ? (
                   <Minimize2 className="w-4 h-4" />
@@ -319,10 +337,15 @@ export function DualPaneViewer({
                 <span className="ml-1 hidden sm:inline">PDF</span>
               </Button>
               <Button
-                variant="outline"
+                variant="ghost"
                 size="sm"
                 onClick={() => toggleFullscreen('right')}
                 disabled={viewerState.fullscreenPane === 'left'}
+                className={`backdrop-blur-sm border transition-all duration-300 ${
+                  viewerState.fullscreenPane === 'right'
+                    ? 'bg-gradient-to-r from-blue-500/20 to-purple-500/20 border-blue-500/30 text-blue-700 dark:text-blue-300 shadow-lg'
+                    : 'bg-white/10 dark:bg-black/10 border-white/20 dark:border-white/10 hover:bg-white/20 dark:hover:bg-black/20'
+                } ${viewerState.fullscreenPane === 'left' ? 'opacity-50 cursor-not-allowed' : ''}`}
               >
                 {viewerState.fullscreenPane === 'right' ? (
                   <Minimize2 className="w-4 h-4" />
@@ -341,11 +364,11 @@ export function DualPaneViewer({
         {/* Left pane - PDF Viewer */}
         <div
           ref={leftPaneRef}
-          className="left-pane flex-col overflow-hidden border-r"
+          className="left-pane flex-col overflow-hidden backdrop-blur-xl bg-white/5 dark:bg-black/5 border-r border-white/20 dark:border-white/10"
           style={paneStyles.left}
         >
           <PDFViewer
-            pdfUrl={`/api/documents/${documentId}/pdf`}
+            pdfUrl={`/api/documents/${documentId}/file`}
             zones={zones}
             selectedZone={viewerState.selectedZone || undefined}
             onZoneSelect={handleZoneSelect}
@@ -365,19 +388,19 @@ export function DualPaneViewer({
         {/* Draggable divider */}
         <div
           ref={dividerRef}
-          className="pane-divider w-1 bg-border hover:bg-primary/20 cursor-col-resize transition-colors relative"
+          className="pane-divider w-2 backdrop-blur-sm bg-white/20 dark:bg-black/20 hover:bg-gradient-to-b hover:from-blue-500/30 hover:to-purple-500/30 cursor-col-resize transition-all duration-300 relative border-x border-white/30 dark:border-white/10"
           style={paneStyles.divider}
           onMouseDown={handleDividerMouseDown}
         >
           <div className="absolute inset-y-0 left-1/2 -translate-x-1/2 w-8 flex items-center justify-center">
-            <GripVertical className="w-4 h-4 text-muted-foreground" />
+            <GripVertical className="w-4 h-4 text-slate-600 dark:text-slate-400" />
           </div>
         </div>
 
         {/* Right pane - Extracted Content Viewer */}
         <div
           ref={rightPaneRef}
-          className="right-pane flex-col overflow-hidden"
+          className="right-pane flex-col overflow-hidden backdrop-blur-xl bg-white/5 dark:bg-black/5"
           style={paneStyles.right}
         >
           <ExtractedContentViewer

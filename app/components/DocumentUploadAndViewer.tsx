@@ -6,7 +6,7 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { FileText, Zap, Shield, Globe, Brain, Sparkles } from 'lucide-react';
+import { FileText, Zap, Shield, Globe, Brain, Sparkles, ArrowLeft } from 'lucide-react';
 
 export function DocumentUploadAndViewer() {
   const [uploadedDocument, setUploadedDocument] = useState<any>(null);
@@ -14,6 +14,7 @@ export function DocumentUploadAndViewer() {
   const [showDetailedAnalysis, setShowDetailedAnalysis] = useState(false);
   const [analysisData, setAnalysisData] = useState<any>(null);
   const [isAnalyzing, setIsAnalyzing] = useState(false);
+  const [viewMode, setViewMode] = useState<'tabs' | 'dual-pane'>('tabs');
 
   const handleUpload = async (file: File) => {
     // Create form data
@@ -160,6 +161,134 @@ export function DocumentUploadAndViewer() {
       badge: 'Global'
     }
   ];
+
+  // Handle dual-pane viewer - FULL SCREEN MODE
+  if (viewMode === 'dual-pane' && uploadedDocument) {
+    return (
+      <div className="fixed inset-0 z-50 h-screen w-screen flex flex-col bg-gradient-to-br from-slate-50 via-blue-50/30 to-indigo-50/20 dark:from-slate-950 dark:via-blue-950/30 dark:to-indigo-950/20">
+        {/* Header with back button */}
+        <div className="backdrop-blur-xl bg-white/10 dark:bg-black/10 border-b border-white/20 dark:border-white/10 px-6 py-4">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center space-x-4">
+              <Button
+                onClick={() => setViewMode('tabs')}
+                variant="ghost"
+                className="backdrop-blur-sm bg-white/10 dark:bg-black/10 border border-white/20 dark:border-white/10 hover:bg-white/20 dark:hover:bg-black/20"
+              >
+                <ArrowLeft className="w-4 h-4 mr-2" />
+                Back to Analysis
+              </Button>
+              <div>
+                <h1 className="text-2xl font-bold bg-gradient-to-r from-blue-600 via-purple-600 to-indigo-600 dark:from-blue-400 dark:via-purple-400 dark:to-indigo-400 bg-clip-text text-transparent">
+                  🔍 Dual-Pane PDF Viewer
+                </h1>
+                <p className="text-slate-600 dark:text-slate-400">
+                  Document: {uploadedDocument.document?.filename || uploadedDocument.documentId}
+                </p>
+              </div>
+            </div>
+            <div className="backdrop-blur-sm bg-green-500/20 border border-green-500/30 text-green-700 dark:text-green-300 px-3 py-1 rounded-lg text-sm font-medium">
+              ✅ Live Document
+            </div>
+          </div>
+        </div>
+        
+                 {/* Dual-pane content - FULL WIDTH */}
+         <div className="flex-1 flex">
+           {/* Left pane - PDF viewer - WIDER */}
+           <div className="w-3/5 backdrop-blur-xl bg-white/5 dark:bg-black/5 border-r border-white/20 dark:border-white/10 flex flex-col">
+            <div className="p-4 border-b border-white/20 dark:border-white/10">
+              <h3 className="text-lg font-semibold text-slate-800 dark:text-slate-200">
+                📄 Original PDF
+              </h3>
+            </div>
+                         <div className="flex-1 relative">
+               {/* PDF Viewer using iframe */}
+               <iframe
+                 src={`/api/documents/${uploadedDocument.documentId}/file`}
+                 className="w-full h-full border-0"
+                 title={`PDF: ${uploadedDocument.document?.filename}`}
+                 onError={() => console.error('PDF loading error')}
+               >
+                 <div className="flex items-center justify-center h-full p-8">
+                   <div className="text-center">
+                     <div className="w-16 h-16 mx-auto mb-4 rounded-xl bg-gradient-to-br from-blue-500/20 to-purple-500/20 flex items-center justify-center">
+                       <FileText className="w-8 h-8 text-blue-600 dark:text-blue-400" />
+                     </div>
+                     <h4 className="text-xl font-semibold text-slate-800 dark:text-slate-200 mb-2">
+                       PDF Loading...
+                     </h4>
+                     <p className="text-slate-600 dark:text-slate-400">
+                       Your PDF: {uploadedDocument.document?.filename}
+                     </p>
+                   </div>
+                 </div>
+               </iframe>
+             </div>
+          </div>
+
+                     {/* Right pane - Extracted content - WIDER */}
+           <div className="w-2/5 backdrop-blur-xl bg-white/5 dark:bg-black/5 flex flex-col">
+            <div className="p-4 border-b border-white/20 dark:border-white/10">
+              <h3 className="text-lg font-semibold text-slate-800 dark:text-slate-200">
+                🧠 Extracted Content
+              </h3>
+            </div>
+            <div className="flex-1 p-6 overflow-y-auto">
+              {analysisData?.elements?.length > 0 ? (
+                <div className="space-y-4">
+                  {analysisData.elements.map((element: any, index: number) => (
+                    <div 
+                      key={index}
+                      className="p-4 rounded-lg backdrop-blur-sm bg-white/10 dark:bg-black/10 border border-white/20 dark:border-white/10"
+                    >
+                      <div className="flex items-center justify-between mb-2">
+                        <Badge 
+                          variant="secondary" 
+                          className="bg-blue-500/20 text-blue-700 dark:text-blue-300"
+                        >
+                          {element.type || 'Content'}
+                        </Badge>
+                        {element.confidence && (
+                          <Badge 
+                            variant="outline"
+                            className={`${
+                              element.confidence > 0.9 
+                                ? 'border-green-500/50 text-green-600 dark:text-green-400' 
+                                : element.confidence > 0.7 
+                                ? 'border-yellow-500/50 text-yellow-600 dark:text-yellow-400'
+                                : 'border-red-500/50 text-red-600 dark:text-red-400'
+                            }`}
+                          >
+                            {Math.round(element.confidence * 100)}%
+                          </Badge>
+                        )}
+                      </div>
+                      <p className="text-slate-700 dark:text-slate-300 leading-relaxed">
+                        {element.text || 'Content extracted'}
+                      </p>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <div className="text-center py-8">
+                  <div className="w-16 h-16 mx-auto mb-4 rounded-xl bg-gradient-to-br from-green-500/20 to-blue-500/20 flex items-center justify-center">
+                    <Brain className="w-8 h-8 text-green-600 dark:text-green-400" />
+                  </div>
+                  <h4 className="text-xl font-semibold text-slate-800 dark:text-slate-200 mb-2">
+                    Content Extracted
+                  </h4>
+                  <p className="text-slate-600 dark:text-slate-400">
+                    Your AI-processed content will appear here
+                  </p>
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="w-full space-y-8">
@@ -518,6 +647,25 @@ export function DocumentUploadAndViewer() {
                           </p>
                         </div>
                       </div>
+                    </CardContent>
+                  </Card>
+
+                  {/* Transition to Dual-Pane Viewer */}
+                  <Card className="backdrop-blur-xl bg-gradient-to-r from-blue-500/10 via-purple-500/10 to-pink-500/10 border border-white/20 dark:border-white/10">
+                    <CardContent className="p-6 text-center">
+                      <h3 className="text-xl font-bold text-slate-800 dark:text-slate-200 mb-3">
+                        🔍 Ready for Side-by-Side Review?
+                      </h3>
+                      <p className="text-slate-600 dark:text-slate-400 mb-6">
+                        Open the dual-pane viewer to see your PDF and extracted content side-by-side with the original document.
+                      </p>
+                      <Button 
+                        onClick={() => setViewMode('dual-pane')}
+                        className="bg-gradient-to-r from-blue-500 to-purple-600 hover:from-blue-600 hover:to-purple-700 text-white px-8 py-3 rounded-xl shadow-lg hover:shadow-xl transition-all duration-300 hover:scale-105"
+                      >
+                        <Zap className="w-5 h-5 mr-2" />
+                        Open Dual-Pane Viewer
+                      </Button>
                     </CardContent>
                   </Card>
                 </div>

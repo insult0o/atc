@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import { useSearchParams } from 'next/navigation';
 import { DualPaneViewer } from '../../components/viewer/DualPaneViewer';
 import { useDocument } from '../../hooks/useDocument';
 import { useZones } from '../../hooks/useZones';
@@ -10,7 +11,9 @@ import type { ExtractedContent } from '../../components/viewer/DualPaneViewer';
 
 // Example page demonstrating the dual-pane viewer
 export default function DualPaneViewerPage() {
-  const [documentId] = useState('example-doc-123');
+  const searchParams = useSearchParams();
+  const documentIdFromUrl = searchParams.get('document');
+  const [documentId] = useState(documentIdFromUrl || 'example-doc-123');
   const [extractedContent, setExtractedContent] = useState<ExtractedContent[]>([]);
   
   // Mock data for demonstration
@@ -147,12 +150,23 @@ Key Features:
   };
 
   return (
-    <div className="h-screen flex flex-col">
-      <header className="border-b px-6 py-4">
-        <h1 className="text-2xl font-semibold">Dual-Pane PDF Viewer Demo</h1>
-        <p className="text-muted-foreground mt-1">
-          Story 2.1: Sophisticated dual-pane interface with synchronized scrolling
-        </p>
+    <div className="h-screen flex flex-col bg-gradient-to-br from-slate-50 via-blue-50/30 to-indigo-50/20 dark:from-slate-950 dark:via-blue-950/30 dark:to-indigo-950/20">
+      <header className="backdrop-blur-xl bg-white/10 dark:bg-black/10 border-b border-white/20 dark:border-white/10 px-6 py-4">
+        <div className="flex items-center justify-between">
+          <div>
+            <h1 className="text-2xl font-bold bg-gradient-to-r from-blue-600 via-purple-600 to-indigo-600 dark:from-blue-400 dark:via-purple-400 dark:to-indigo-400 bg-clip-text text-transparent">
+              🔍 Dual-Pane PDF Viewer
+            </h1>
+            <p className="text-slate-600 dark:text-slate-400 mt-1">
+              {documentIdFromUrl ? `Document: ${documentId}` : 'Demo Mode - Story 2.1: Sophisticated dual-pane interface with synchronized scrolling'}
+            </p>
+          </div>
+          {documentIdFromUrl && (
+            <div className="backdrop-blur-sm bg-green-500/20 border border-green-500/30 text-green-700 dark:text-green-300 px-3 py-1 rounded-lg text-sm font-medium">
+              ✅ Live Document
+            </div>
+          )}
+        </div>
       </header>
       
       <main className="flex-1 overflow-hidden">
