@@ -24,6 +24,7 @@ export interface ZoneManagerProps {
 export interface Zone {
   id: string;
   coordinates: ZoneCoordinates;
+  bounds: ZoneBounds; // Added for compatibility with confidence visualization
   contentType: 'text' | 'table' | 'diagram' | 'mixed' | 'header' | 'footer';
   confidence: number;
   characteristics: ContentCharacteristics;
@@ -35,6 +36,13 @@ export interface Zone {
   processingResults?: ProcessingResult[];
   userModified: boolean;
   lastModified: Date;
+}
+
+export interface ZoneBounds {
+  x: number;
+  y: number;
+  width: number;
+  height: number;
 }
 
 export interface ZoneCoordinates {
@@ -128,8 +136,16 @@ export function ZoneManager({
   const [zoneFilter, setZoneFilter] = useState<string>('all');
   const [scale, setScale] = useState(1.0);
 
-  // Filter zones for current page
-  const currentPageZones = zones.filter(zone => zone.pageNumber === currentPage);
+  // Filter zones for current page and ensure bounds property
+  const currentPageZones = zones.filter(zone => zone.pageNumber === currentPage).map(zone => ({
+    ...zone,
+    bounds: zone.bounds || {
+      x: zone.coordinates.x,
+      y: zone.coordinates.y,
+      width: zone.coordinates.width,
+      height: zone.coordinates.height
+    }
+  }));
 
   // Render zones on canvas
   const renderZones = useCallback(() => {
@@ -418,6 +434,12 @@ export function ZoneManager({
       if (width > 10 && height > 10) { // Minimum zone size
         const newZone: Partial<Zone> = {
           coordinates: {
+            x: Math.min(x, interaction.dragStart.x),
+            y: Math.min(y, interaction.dragStart.y),
+            width,
+            height
+          },
+          bounds: {
             x: Math.min(x, interaction.dragStart.x),
             y: Math.min(y, interaction.dragStart.y),
             width,

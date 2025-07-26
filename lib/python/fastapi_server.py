@@ -104,13 +104,13 @@ async def process_document(
             temp_file.write(content)
             temp_filename = temp_file.name
 
-        # Process with enhanced processor
-        config = {
+        # Update processor config for this request
+        processor.config.update({
             "strategy": strategy,
             "chunking_strategy": chunking_strategy,
             "max_characters": max_characters,
             "languages": languages.split(",") if isinstance(languages, str) else languages
-        }
+        })
         
         result = processor.process_document(temp_filename)
         

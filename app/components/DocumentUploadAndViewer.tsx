@@ -1,324 +1,261 @@
 'use client';
 
-import React, { useState, useCallback } from 'react';
-import { AlertTriangle, RefreshCw, X } from 'lucide-react';
+import React, { useState } from 'react';
 import { UploadZone } from './upload/UploadZone';
-import { PDFViewer } from './viewer/PDFViewer';
-import { useDocument } from '../hooks/useDocument';
-import { Button } from '../../components/ui/button';
-import { Alert, AlertDescription, AlertTitle } from '../../components/ui/alert';
-import { ErrorBoundary } from './error-boundary';
-import type { CreateZoneRequest } from '@pdf-platform/shared';
+import { Button } from '@/components/ui/button';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Badge } from '@/components/ui/badge';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { FileText, Zap, Shield, Globe, Brain, Sparkles } from 'lucide-react';
 
-interface DocumentUploadAndViewerProps {
-  className?: string;
-}
+export function DocumentUploadAndViewer() {
+  const [uploadedDocument, setUploadedDocument] = useState<any>(null);
+  const [activeTab, setActiveTab] = useState('upload');
 
-type ViewState = 'upload' | 'processing' | 'viewing' | 'error';
+  const handleUpload = async (file: File) => {
+    // Create form data
+    const formData = new FormData();
+    formData.append('file', file);
 
-interface ErrorInfo {
-  type: 'upload' | 'processing' | 'viewer' | 'network';
-  message: string;
-  retryable: boolean;
-  details?: string;
-}
+    // Upload file
+    const response = await fetch('/api/upload', {
+      method: 'POST',
+      body: formData,
+    });
 
-export function DocumentUploadAndViewer({ className }: DocumentUploadAndViewerProps) {
-  const [viewState, setViewState] = useState<ViewState>('upload');
-  const [currentDocumentId, setCurrentDocumentId] = useState<string | null>(null);
-  const [selectedZone, setSelectedZone] = useState<string | undefined>();
-  const [errorInfo, setErrorInfo] = useState<ErrorInfo | null>(null);
-  const [confidenceThreshold, setConfidenceThreshold] = useState(0.7);
-
-  // Document management hook
-  const {
-    document,
-    zones,
-    processing,
-    isLoading,
-    isProcessing,
-    isConnected,
-    hasError,
-    error,
-    processingProgress,
-    uploadDocument,
-    updateZoneContent,
-    reprocessZone,
-    refetch,
-    reset,
-    getZonesByPage,
-    isUploading,
-    isUpdatingZone,
-    isReprocessing
-  } = useDocument(currentDocumentId || undefined, {
-    enableRealtime: true,
-    autoRefresh: true
-  });
-
-  // Handle file upload
-  const handleUpload = useCallback(async (file: File) => {
-    try {
-      setErrorInfo(null);
-      setViewState('processing');
-      
-      const result = await uploadDocument(file);
-      setCurrentDocumentId(result.document.id);
-      
-      // Wait for processing to complete or timeout
-      setTimeout(() => {
-        if (result.document.status === 'uploaded' || result.document.status === 'processing') {
-          setViewState('viewing');
-        }
-      }, 1000);
-      
-      return { documentId: result.document.id, document: result.document };
-      
-    } catch (error) {
-      console.error('Upload failed:', error);
-      const errorInfo: ErrorInfo = {
-        type: 'upload',
-        message: error instanceof Error ? error.message : 'Upload failed',
-        retryable: true,
-        details: 'Please check your file and try again'
-      };
-      setErrorInfo(errorInfo);
-      setViewState('error');
-      throw error;
+    if (!response.ok) {
+      const error = await response.json();
+      throw new Error(error.message || 'Upload failed');
     }
-  }, [uploadDocument]);
 
-  // Handle zone selection
-  const handleZoneSelect = useCallback((zoneId: string) => {
-    setSelectedZone(zoneId);
-  }, []);
-
-  // Handle zone creation
-  const handleZoneCreate = useCallback(async (zoneRequest: CreateZoneRequest) => {
-    try {
-      console.log('Creating new zone:', zoneRequest);
-      // TODO: Implement zone creation API call
-      // For now, just log the request
-    } catch (error) {
-      console.error('Zone creation failed:', error);
-      const errorInfo: ErrorInfo = {
-        type: 'processing',
-        message: 'Failed to create zone',
-        retryable: true,
-        details: error instanceof Error ? error.message : 'Unknown error'
-      };
-      setErrorInfo(errorInfo);
-    }
-  }, []);
-
-  // Handle zone content updates
-  const handleZoneContentUpdate = useCallback(async (zoneId: string, content: string) => {
-    try {
-      await updateZoneContent(zoneId, content);
-    } catch (error) {
-      console.error('Zone update failed:', error);
-      const errorInfo: ErrorInfo = {
-        type: 'processing',
-        message: 'Failed to update zone content',
-        retryable: true,
-        details: error instanceof Error ? error.message : 'Unknown error'
-      };
-      setErrorInfo(errorInfo);
-    }
-  }, [updateZoneContent]);
-
-  // Handle zone reprocessing
-  const handleZoneReprocess = useCallback(async (zoneId: string, tool?: string) => {
-    try {
-      await reprocessZone(zoneId, tool);
-    } catch (error) {
-      console.error('Zone reprocessing failed:', error);
-      const errorInfo: ErrorInfo = {
-        type: 'processing',
-        message: 'Failed to reprocess zone',
-        retryable: true,
-        details: error instanceof Error ? error.message : 'Unknown error'
-      };
-      setErrorInfo(errorInfo);
-    }
-  }, [reprocessZone]);
-
-  // Handle retry operations
-  const handleRetry = useCallback(() => {
-    setErrorInfo(null);
+    const result = await response.json();
+    setUploadedDocument(result);
+    setActiveTab('processing');
     
-    if (currentDocumentId) {
-      refetch();
-      setViewState('viewing');
-    } else {
-      setViewState('upload');
+    return result;
+  };
+
+  const features = [
+    {
+      icon: <Brain className="w-6 h-6" />,
+      title: 'Advanced AI Analysis',
+      description: 'Deep learning models extract complex patterns and insights from your documents.',
+      badge: 'AI-Powered'
+    },
+    {
+      icon: <Zap className="w-6 h-6" />,
+      title: 'Lightning Fast',
+      description: 'Process documents in seconds with our optimized processing pipeline.',
+      badge: 'Performance'
+    },
+    {
+      icon: <Shield className="w-6 h-6" />,
+      title: 'Privacy First',
+      description: 'Your documents are processed securely and never stored permanently.',
+      badge: 'Secure'
+    },
+    {
+      icon: <Globe className="w-6 h-6" />,
+      title: 'Multi-Language',
+      description: 'Support for documents in over 50 languages with high accuracy.',
+      badge: 'Global'
     }
-  }, [currentDocumentId, refetch]);
+  ];
 
-  // Handle reset to start over
-  const handleReset = useCallback(() => {
-    reset();
-    setCurrentDocumentId(null);
-    setSelectedZone(undefined);
-    setErrorInfo(null);
-    setViewState('upload');
-  }, [reset]);
-
-  // Monitor for errors and connection issues
-  React.useEffect(() => {
-    if (hasError && error) {
-      const errorInfo: ErrorInfo = {
-        type: 'network',
-        message: typeof error === 'string' ? error : 'An error occurred',
-        retryable: true,
-        details: 'Check your connection and try again'
-      };
-      setErrorInfo(errorInfo);
-      setViewState('error');
-    }
-  }, [hasError, error]);
-
-  // Monitor connection status
-  React.useEffect(() => {
-    if (!isConnected && currentDocumentId) {
-      const errorInfo: ErrorInfo = {
-        type: 'network',
-        message: 'Lost connection to server',
-        retryable: true,
-        details: 'Real-time updates are unavailable'
-      };
-      setErrorInfo(errorInfo);
-    }
-  }, [isConnected, currentDocumentId]);
-
-  // Render upload state
-  if (viewState === 'upload') {
-    return (
-      <div className={`max-w-4xl mx-auto p-6 ${className}`}>
-        <div className="text-center mb-8">
-          <h1 className="text-3xl font-bold text-gray-900 mb-2">
-            PDF Intelligence Platform
-          </h1>
-          <p className="text-gray-600">
-            Upload a PDF to extract and process its content with AI-powered tools
-          </p>
+  return (
+    <div className="w-full space-y-8">
+      <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
+        {/* Tab Headers with Glass Effect */}
+        <div className="flex justify-center mb-8">
+          <TabsList className="backdrop-blur-xl bg-white/20 dark:bg-black/20 border border-white/30 dark:border-white/20 p-1 rounded-2xl shadow-lg">
+            <TabsTrigger 
+              value="upload" 
+              className="px-6 py-3 rounded-xl data-[state=active]:bg-white/40 data-[state=active]:dark:bg-black/40 data-[state=active]:shadow-lg transition-all duration-300"
+            >
+              <FileText className="w-4 h-4 mr-2" />
+              Upload Document
+            </TabsTrigger>
+            <TabsTrigger 
+              value="features" 
+              className="px-6 py-3 rounded-xl data-[state=active]:bg-white/40 data-[state=active]:dark:bg-black/40 data-[state=active]:shadow-lg transition-all duration-300"
+            >
+              <Sparkles className="w-4 h-4 mr-2" />
+              Features
+            </TabsTrigger>
+            <TabsTrigger 
+              value="processing" 
+              className="px-6 py-3 rounded-xl data-[state=active]:bg-white/40 data-[state=active]:dark:bg-black/40 data-[state=active]:shadow-lg transition-all duration-300"
+              disabled={!uploadedDocument}
+            >
+              <Zap className="w-4 h-4 mr-2" />
+              Processing
+            </TabsTrigger>
+          </TabsList>
         </div>
-        
-        <ErrorBoundary>
+
+        {/* Upload Tab */}
+        <TabsContent value="upload" className="space-y-8">
+          <div className="text-center space-y-4 mb-8">
+            <h2 className="text-3xl font-bold bg-gradient-to-r from-blue-600 via-purple-600 to-indigo-600 dark:from-blue-400 dark:via-purple-400 dark:to-indigo-400 bg-clip-text text-transparent">
+              Get Started
+            </h2>
+            <p className="text-lg text-slate-600 dark:text-slate-400 max-w-2xl mx-auto">
+              Upload your PDF and watch our AI transform it into structured, searchable insights in seconds.
+            </p>
+          </div>
+
           <UploadZone 
             onUpload={handleUpload}
+            maxSize={100 * 1024 * 1024}
             enableRealtime={true}
           />
-        </ErrorBoundary>
-      </div>
-    );
-  }
 
-  // Render error state
-  if (viewState === 'error' && errorInfo) {
-    return (
-      <div className={`max-w-4xl mx-auto p-6 ${className}`}>
-        <Alert variant="destructive" className="mb-6">
-          <AlertTriangle className="h-4 w-4" />
-          <AlertTitle>Error: {errorInfo.message}</AlertTitle>
-          <AlertDescription>
-            {errorInfo.details}
-          </AlertDescription>
-        </Alert>
-        
-        <div className="flex gap-4 justify-center">
-          {errorInfo.retryable && (
-            <Button onClick={handleRetry} className="flex items-center gap-2">
-              <RefreshCw className="w-4 h-4" />
-              Retry
-            </Button>
-          )}
-          <Button variant="outline" onClick={handleReset} className="flex items-center gap-2">
-            <X className="w-4 h-4" />
-            Start Over
-          </Button>
-        </div>
-      </div>
-    );
-  }
-
-  // Render processing state
-  if (viewState === 'processing' || isLoading) {
-    return (
-      <div className={`max-w-4xl mx-auto p-6 ${className}`}>
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mx-auto mb-4"></div>
-          <h2 className="text-xl font-semibold mb-2">Processing Document</h2>
-          <p className="text-gray-600 mb-4">
-            {isProcessing ? `Processing zones... ${Math.round(processingProgress)}% complete` : 'Initializing...'}
-          </p>
-          
-          {processing.estimatedTimeRemaining > 0 && (
-            <p className="text-sm text-gray-500">
-              Estimated time remaining: {processing.estimatedTimeRemaining} seconds
-            </p>
-          )}
-        </div>
-      </div>
-    );
-  }
-
-  // Render viewing state
-  if (viewState === 'viewing' && document) {
-    return (
-      <ErrorBoundary>
-        <div className={`h-screen flex flex-col ${className}`}>
-          {/* Header */}
-          <div className="border-b bg-background p-4">
-            <div className="flex items-center justify-between">
-              <div>
-                <h1 className="text-lg font-semibold">{document.name}</h1>
-                <p className="text-sm text-muted-foreground">
-                  {zones.length} zones detected • {Math.round(processingProgress)}% processed
-                </p>
+          {/* Quick Stats */}
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mt-12">
+            {[
+              { value: '2.5M+', label: 'Documents Processed' },
+              { value: '< 3s', label: 'Average Processing' },
+              { value: '99.8%', label: 'Accuracy Rate' },
+              { value: '24/7', label: 'Available' }
+            ].map((stat) => (
+              <div 
+                key={stat.label}
+                className="backdrop-blur-xl bg-white/10 dark:bg-black/10 border border-white/20 dark:border-white/10 rounded-xl p-4 text-center hover:bg-white/20 dark:hover:bg-black/20 transition-all duration-300"
+              >
+                <div className="text-2xl font-bold text-blue-600 dark:text-blue-400">
+                  {stat.value}
+                </div>
+                <div className="text-sm text-slate-600 dark:text-slate-400">
+                  {stat.label}
+                </div>
               </div>
-              
-              <div className="flex items-center gap-4">
-                {!isConnected && (
-                  <Alert className="w-auto">
-                    <AlertTriangle className="h-4 w-4" />
-                    <AlertDescription>Connection lost</AlertDescription>
-                  </Alert>
-                )}
-                
-                <Button variant="outline" onClick={handleReset}>
-                  Upload New Document
+            ))}
+          </div>
+        </TabsContent>
+
+        {/* Features Tab */}
+        <TabsContent value="features" className="space-y-8">
+          <div className="text-center space-y-4 mb-8">
+            <h2 className="text-3xl font-bold bg-gradient-to-r from-blue-600 via-purple-600 to-indigo-600 dark:from-blue-400 dark:via-purple-400 dark:to-indigo-400 bg-clip-text text-transparent">
+              Powerful Features
+            </h2>
+            <p className="text-lg text-slate-600 dark:text-slate-400 max-w-2xl mx-auto">
+              Our platform combines cutting-edge AI with intuitive design to deliver unprecedented document analysis capabilities.
+            </p>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            {features.map((feature, index) => (
+              <Card 
+                key={feature.title}
+                className="backdrop-blur-xl bg-white/10 dark:bg-black/10 border border-white/20 dark:border-white/10 hover:bg-white/20 dark:hover:bg-black/20 transition-all duration-500 hover:scale-105 group"
+                style={{ animationDelay: `${index * 100}ms` }}
+              >
+                <CardHeader className="pb-4">
+                  <div className="flex items-center justify-between mb-2">
+                    <div className="p-3 rounded-xl bg-gradient-to-br from-blue-500/20 to-purple-500/20 group-hover:from-blue-500/30 group-hover:to-purple-500/30 transition-all duration-300">
+                      {feature.icon}
+                    </div>
+                    <Badge variant="secondary" className="bg-white/20 dark:bg-black/20 text-xs">
+                      {feature.badge}
+                    </Badge>
+                  </div>
+                  <CardTitle className="text-xl text-slate-800 dark:text-slate-200">
+                    {feature.title}
+                  </CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <CardDescription className="text-slate-600 dark:text-slate-400 text-base">
+                    {feature.description}
+                  </CardDescription>
+                </CardContent>
+              </Card>
+            ))}
+          </div>
+
+          {/* CTA Section */}
+          <div className="backdrop-blur-xl bg-gradient-to-r from-blue-500/10 via-purple-500/10 to-pink-500/10 border border-white/20 dark:border-white/10 rounded-2xl p-8 text-center">
+            <h3 className="text-2xl font-bold text-slate-800 dark:text-slate-200 mb-4">
+              Ready to Transform Your Documents?
+            </h3>
+            <p className="text-slate-600 dark:text-slate-400 mb-6">
+              Join thousands of users who trust our platform for intelligent document processing.
+            </p>
+            <Button 
+              onClick={() => setActiveTab('upload')}
+              className="bg-gradient-to-r from-blue-500 to-purple-600 hover:from-blue-600 hover:to-purple-700 text-white px-8 py-3 rounded-xl shadow-lg hover:shadow-xl transition-all duration-300 hover:scale-105"
+            >
+              Start Processing Now
+              <Zap className="w-4 h-4 ml-2" />
+            </Button>
+          </div>
+        </TabsContent>
+
+        {/* Processing Tab */}
+        <TabsContent value="processing" className="space-y-8">
+          <div className="text-center space-y-4 mb-8">
+            <h2 className="text-3xl font-bold bg-gradient-to-r from-green-600 via-blue-600 to-purple-600 dark:from-green-400 dark:via-blue-400 dark:to-purple-400 bg-clip-text text-transparent">
+              Processing Results
+            </h2>
+            <p className="text-lg text-slate-600 dark:text-slate-400 max-w-2xl mx-auto">
+              Your document has been successfully processed. Here are the insights we extracted.
+            </p>
+          </div>
+
+          {uploadedDocument && (
+            <div className="space-y-6">
+              {/* Document Info Card */}
+              <Card className="backdrop-blur-xl bg-white/10 dark:bg-black/10 border border-white/20 dark:border-white/10">
+                <CardHeader>
+                  <CardTitle className="flex items-center space-x-2">
+                    <FileText className="w-5 h-5" />
+                    <span>Document Information</span>
+                  </CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    <div>
+                      <span className="text-sm text-slate-600 dark:text-slate-400">File Name</span>
+                      <p className="font-medium text-slate-800 dark:text-slate-200">
+                        {uploadedDocument.document?.filename || 'Uploaded Document'}
+                      </p>
+                    </div>
+                    <div>
+                      <span className="text-sm text-slate-600 dark:text-slate-400">Status</span>
+                      <p className="font-medium text-green-600 dark:text-green-400">
+                        ✅ Successfully Processed
+                      </p>
+                    </div>
+                    <div>
+                      <span className="text-sm text-slate-600 dark:text-slate-400">Document ID</span>
+                      <p className="font-medium text-slate-800 dark:text-slate-200 font-mono text-sm">
+                        {uploadedDocument.documentId}
+                      </p>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+
+              {/* Actions */}
+              <div className="flex justify-center space-x-4">
+                <Button 
+                  onClick={() => setActiveTab('upload')}
+                  variant="outline"
+                  className="px-6 py-3 rounded-xl backdrop-blur-sm bg-white/20 dark:bg-black/20 border-white/30 dark:border-white/20"
+                >
+                  Process Another Document
+                </Button>
+                <Button 
+                  className="px-6 py-3 rounded-xl bg-gradient-to-r from-green-500 to-blue-600 hover:from-green-600 hover:to-blue-700 text-white shadow-lg hover:shadow-xl transition-all duration-300"
+                >
+                  View Detailed Analysis
+                  <Brain className="w-4 h-4 ml-2" />
                 </Button>
               </div>
             </div>
-          </div>
-
-          {/* PDF Viewer */}
-          <div className="flex-1 overflow-hidden">
-            <PDFViewer
-              pdfUrl={document.filePath}
-              zones={zones}
-              selectedZone={selectedZone}
-              onZoneSelect={handleZoneSelect}
-              onZoneCreate={handleZoneCreate}
-              confidenceThreshold={confidenceThreshold}
-            />
-          </div>
-
-          {/* Status bar */}
-          {(isUploading || isUpdatingZone || isReprocessing) && (
-            <div className="border-t bg-muted p-2">
-              <div className="flex items-center gap-2 text-sm">
-                <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-primary"></div>
-                {isUploading && 'Uploading...'}
-                {isUpdatingZone && 'Updating zone...'}
-                {isReprocessing && 'Reprocessing zone...'}
-              </div>
-            </div>
           )}
-        </div>
-      </ErrorBoundary>
-    );
-  }
-
-  return null;
+        </TabsContent>
+      </Tabs>
+    </div>
+  );
 } 

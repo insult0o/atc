@@ -70,4 +70,4 @@ RUN useradd -m -u 1001 appuser && \
 USER appuser
 
 # Start command
-CMD ["python", "/app/lib/python/enhanced_unstructured_processor.py", '{"filename": "/app/temp/health_check.pdf", "strategy": "fast"}'] 
+CMD ["python", "/app/lib/python/fastapi_server.py"] 
