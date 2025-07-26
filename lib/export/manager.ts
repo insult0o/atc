@@ -17,14 +17,22 @@ import { CorrectionsGenerator } from './generators/corrections-generator';
 import { ManifestGenerator } from './generators/manifest-generator';
 import { LogGenerator } from './generators/log-generator';
 
-import { ExportProgressTracker, ExportTask, createProgressAwareExport } from './progress-tracker';
+import { ExportProgressTracker, ExportTask, ExportProgress, createProgressAwareExport } from './progress-tracker';
 import { ExportConfigManager } from './config-manager';
+import { 
+  ValidationOrchestrator, 
+  ValidationResult,
+  BlockingIssue 
+} from './validation/validation-orchestrator';
+import { ErrorDetail } from './validation/error-validator';
+import { Zone } from '../types/zone';
+import { PDFDocument } from '../types/pdf';
 
-interface Document {
+interface Document extends Partial<PDFDocument> {
   id: string;
   name: string;
   pageCount: number;
-  zones: any[];
+  zones: Zone[];
   corrections?: any[];
   processingStartTime?: Date;
   processingEndTime?: Date;
@@ -41,17 +49,31 @@ interface ExportSession {
   results: Map<ExportFormat, ExportResult>;
   errors: ExportError[];
   warnings: ExportWarning[];
+  validationResults: Map<ExportFormat, ValidationResult>;
+  overrideRequests?: Map<ExportFormat, OverrideRequest>;
+}
+
+interface OverrideRequest {
+  blockers: BlockingIssue[];
+  justification: string;
+  requestedBy?: string;
+  requestedAt: Date;
+  approvedBy?: string;
+  approvedAt?: Date;
+  status: 'pending' | 'approved' | 'rejected';
 }
 
 export class ExportManager {
   private progressTracker: ExportProgressTracker;
   private configManager: ExportConfigManager;
+  private validationOrchestrator: ValidationOrchestrator;
   private generators: Map<ExportFormat, any>;
   private activeSessions: Map<string, ExportSession>;
 
   constructor() {
     this.progressTracker = new ExportProgressTracker({ persistenceEnabled: true });
     this.configManager = new ExportConfigManager();
+    this.validationOrchestrator = new ValidationOrchestrator();
     this.generators = new Map();
     this.activeSessions = new Map();
 
@@ -93,7 +115,9 @@ export class ExportManager {
       startTime: new Date(),
       results: new Map(),
       errors: [],
-      warnings: []
+      warnings: [],
+      validationResults: new Map(),
+      overrideRequests: new Map()
     };
 
     this.activeSessions.set(sessionId, session);
@@ -246,6 +270,39 @@ export class ExportManager {
       // Execute export with progress tracking
       const result = await task.processFunction();
       
+      // Validate the export if validation is enabled
+      if (session.options.validation?.enabled !== false) {
+        const validationResult = await this.validateExport(
+          format,
+          result,
+          document,
+          session
+        );
+        
+        session.validationResults.set(format, validationResult);
+        
+        // Check if validation blocks the export
+        if (!validationResult.valid && !this.hasApprovedOverride(session, format)) {
+          return {
+            ...result,
+            status: 'failure',
+            errors: [
+              ...(result.errors || []),
+              {
+                code: 'VALIDATION_FAILED',
+                message: 'Export validation failed',
+                details: validationResult.blockers
+              }
+            ],
+            metadata: {
+              ...result.metadata,
+              validationScore: validationResult.score,
+              validationReport: validationResult.report
+            }
+          };
+        }
+      }
+      
       return result;
     } catch (error) {
       // Handle cancellation
@@ -381,6 +438,119 @@ export class ExportManager {
    */
   private generateSessionId(): string {
     return `export-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+  }
+
+  /**
+   * Validate export result
+   */
+  private async validateExport(
+    format: ExportFormat,
+    result: ExportResult,
+    document: Document,
+    session: ExportSession
+  ): Promise<ValidationResult> {
+    // Convert document to PDFDocument format if needed
+    const pdfDocument: PDFDocument = {
+      id: document.id,
+      filename: document.name,
+      pages: document.pages || [],
+      metadata: {
+        pageCount: document.pageCount,
+        fileSize: 0
+      },
+      processingStatus: 'completed',
+      version: 1,
+      createdAt: document.processingStartTime || new Date(),
+      updatedAt: document.processingEndTime || new Date()
+    };
+
+    // Collect processing errors
+    const processingErrors: ErrorDetail[] = session.errors.map(e => ({
+      id: `error_${Date.now()}_${Math.random()}`,
+      component: 'export',
+      type: e.code,
+      severity: 'error' as const,
+      message: e.message,
+      timestamp: new Date(),
+      context: e.details || {},
+      recoverable: false
+    }));
+
+    // Extract metadata from result
+    const metadata = {
+      ...result.metadata,
+      document_id: document.id,
+      format,
+      timestamp: new Date().toISOString(),
+      version: 1,
+      processing_status: result.status
+    };
+
+    // Run validation
+    return await this.validationOrchestrator.validate(
+      format,
+      result.data || result,
+      pdfDocument,
+      document.zones,
+      metadata,
+      processingErrors
+    );
+  }
+
+  /**
+   * Check if an override has been approved
+   */
+  private hasApprovedOverride(session: ExportSession, format: ExportFormat): boolean {
+    const override = session.overrideRequests?.get(format);
+    return override?.status === 'approved';
+  }
+
+  /**
+   * Request validation override
+   */
+  async requestValidationOverride(
+    sessionId: string,
+    format: ExportFormat,
+    justification: string,
+    requestedBy?: string
+  ): Promise<boolean> {
+    const session = this.activeSessions.get(sessionId);
+    if (!session) return false;
+
+    const validationResult = session.validationResults.get(format);
+    if (!validationResult || validationResult.valid) return false;
+
+    const overridableBlockers = validationResult.blockers.filter(b => b.canOverride);
+    if (overridableBlockers.length === 0) return false;
+
+    const overrideRequest: OverrideRequest = {
+      blockers: overridableBlockers,
+      justification,
+      requestedBy,
+      requestedAt: new Date(),
+      status: 'pending'
+    };
+
+    session.overrideRequests?.set(format, overrideRequest);
+    
+    // In a real system, this would trigger an approval workflow
+    // For now, we'll auto-approve after validation
+    if (justification.length > 50) {
+      overrideRequest.status = 'approved';
+      overrideRequest.approvedBy = 'system';
+      overrideRequest.approvedAt = new Date();
+      return true;
+    }
+
+    return false;
+  }
+
+  /**
+   * Get validation results for a session
+   */
+  getValidationResults(sessionId: string): Map<ExportFormat, ValidationResult> | undefined {
+    const session = this.activeSessions.get(sessionId);
+    return session?.validationResults;
   }
 
   /**
