@@ -1,12 +1,13 @@
 'use client';
 
 import React, { useState } from 'react';
+import { createPortal } from 'react-dom';
 import { UploadZone } from './upload/UploadZone';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { FileText, Zap, Shield, Globe, Brain, Sparkles, ArrowLeft } from 'lucide-react';
+import { FileText, Zap, Shield, Globe, Brain, Sparkles, ArrowLeft, GripVertical, Maximize2, RotateCw } from 'lucide-react';
 
 export function DocumentUploadAndViewer() {
   const [uploadedDocument, setUploadedDocument] = useState<any>(null);
@@ -15,6 +16,88 @@ export function DocumentUploadAndViewer() {
   const [analysisData, setAnalysisData] = useState<any>(null);
   const [isAnalyzing, setIsAnalyzing] = useState(false);
   const [viewMode, setViewMode] = useState<'tabs' | 'dual-pane'>('tabs');
+  const [paneRatio, setPaneRatio] = useState(0.6); // 60% left, 40% right
+  const [isDragging, setIsDragging] = useState(false);
+
+  // Handle draggable divider
+  React.useEffect(() => {
+    const handleMouseMove = (e: MouseEvent) => {
+      if (!isDragging) return;
+      
+      const newRatio = e.clientX / window.innerWidth;
+      if (newRatio >= 0.3 && newRatio <= 0.8) {
+        setPaneRatio(newRatio);
+      }
+    };
+
+    const handleMouseUp = () => {
+      setIsDragging(false);
+    };
+
+    if (isDragging) {
+      document.addEventListener('mousemove', handleMouseMove);
+      document.addEventListener('mouseup', handleMouseUp);
+      document.body.style.cursor = 'col-resize';
+      document.body.style.userSelect = 'none';
+    }
+
+    return () => {
+      document.removeEventListener('mousemove', handleMouseMove);
+      document.removeEventListener('mouseup', handleMouseUp);
+      document.body.style.cursor = '';
+      document.body.style.userSelect = '';
+    };
+  }, [isDragging]);
+
+  // Intelligently detect maximum available screen space (handles DPI scaling)
+  React.useEffect(() => {
+    const detectMaximumScreenSpace = () => {
+      if (typeof window !== 'undefined') {
+        // Get all possible dimension sources
+        const screenWidth = window.screen.width;
+        const screenHeight = window.screen.height;
+        const availWidth = window.screen.availWidth;
+        const availHeight = window.screen.availHeight;
+        const innerWidth = window.innerWidth;
+        const innerHeight = window.innerHeight;
+        const outerWidth = window.outerWidth;
+        const outerHeight = window.outerHeight;
+        
+        // Calculate DPI scaling ratio
+        const devicePixelRatio = window.devicePixelRatio || 1;
+        
+        // Use the maximum available space that the browser can actually utilize
+        const maxUsableWidth = Math.max(availWidth, screenWidth, outerWidth, innerWidth);
+        const maxUsableHeight = Math.max(availHeight, screenHeight, outerHeight, innerHeight);
+        
+        setScreenDimensions({
+          width: maxUsableWidth,
+          height: maxUsableHeight
+        });
+        
+        console.log('🖥️ Screen space detection:', {
+          native: { screenWidth, screenHeight },
+          available: { availWidth, availHeight },
+          browser: { innerWidth, innerHeight, outerWidth, outerHeight },
+          devicePixelRatio,
+          maxUsable: { width: maxUsableWidth, height: maxUsableHeight }
+        });
+      }
+    };
+
+    detectMaximumScreenSpace();
+    
+    // Re-detect on window resize, fullscreen changes, or DPI changes
+    window.addEventListener('resize', detectMaximumScreenSpace);
+    window.addEventListener('orientationchange', detectMaximumScreenSpace);
+    document.addEventListener('fullscreenchange', detectMaximumScreenSpace);
+    
+    return () => {
+      window.removeEventListener('resize', detectMaximumScreenSpace);
+      window.removeEventListener('orientationchange', detectMaximumScreenSpace);
+      document.removeEventListener('fullscreenchange', detectMaximumScreenSpace);
+    };
+  }, []);
 
   const handleUpload = async (file: File) => {
     // Create form data
@@ -162,10 +245,30 @@ export function DocumentUploadAndViewer() {
     }
   ];
 
-  // Handle dual-pane viewer - FULL SCREEN MODE
+  // Handle dual-pane viewer - FULL SCREEN MODE WITH PORTAL
   if (viewMode === 'dual-pane' && uploadedDocument) {
-    return (
-      <div className="fixed inset-0 z-50 h-screen w-screen flex flex-col bg-gradient-to-br from-slate-50 via-blue-50/30 to-indigo-50/20 dark:from-slate-950 dark:via-blue-950/30 dark:to-indigo-950/20">
+    const dualPaneContent = (
+      <div 
+        className="z-[9999] h-screen w-screen flex flex-col bg-gradient-to-br from-slate-50 via-blue-50/30 to-indigo-50/20 dark:from-slate-950 dark:via-blue-950/30 dark:to-indigo-950/20" 
+                 style={{ 
+           position: 'fixed', 
+           top: 0, 
+           left: 0, 
+           right: 0, 
+           bottom: 0,
+           margin: 0,
+           padding: 0,
+           transform: 'none',
+           zIndex: 9999,
+           width: `${screenDimensions.width}px`,
+           height: `${screenDimensions.height}px`,
+           maxWidth: `${screenDimensions.width}px`,
+           maxHeight: `${screenDimensions.height}px`,
+           minWidth: '100vw',
+           minHeight: '100vh',
+           overflow: 'hidden'
+         }}
+      >
         {/* Header with back button */}
         <div className="backdrop-blur-xl bg-white/10 dark:bg-black/10 border-b border-white/20 dark:border-white/10 px-6 py-4">
           <div className="flex items-center justify-between">
@@ -181,7 +284,7 @@ export function DocumentUploadAndViewer() {
               <div>
                 <h1 className="text-2xl font-bold bg-gradient-to-r from-blue-600 via-purple-600 to-indigo-600 dark:from-blue-400 dark:via-purple-400 dark:to-indigo-400 bg-clip-text text-transparent">
                   🔍 Dual-Pane PDF Viewer
-                </h1>
+          </h1>
                 <p className="text-slate-600 dark:text-slate-400">
                   Document: {uploadedDocument.document?.filename || uploadedDocument.documentId}
                 </p>
@@ -195,13 +298,24 @@ export function DocumentUploadAndViewer() {
         
                  {/* Dual-pane content - FULL WIDTH */}
          <div className="flex-1 flex">
-           {/* Left pane - PDF viewer - WIDER */}
-           <div className="w-3/5 backdrop-blur-xl bg-white/5 dark:bg-black/5 border-r border-white/20 dark:border-white/10 flex flex-col">
-            <div className="p-4 border-b border-white/20 dark:border-white/10">
-              <h3 className="text-lg font-semibold text-slate-800 dark:text-slate-200">
-                📄 Original PDF
-              </h3>
-            </div>
+           {/* Left pane - PDF viewer - RESIZABLE */}
+           <div 
+             className="backdrop-blur-xl bg-white/5 dark:bg-black/5 border-r border-white/20 dark:border-white/10 flex flex-col"
+             style={{ width: `${paneRatio * 100}%` }}
+           >
+                         <div className="p-4 border-b border-white/20 dark:border-white/10 flex items-center justify-between">
+               <h3 className="text-lg font-semibold text-slate-800 dark:text-slate-200">
+                 📄 Original PDF
+               </h3>
+               <div className="flex items-center space-x-2">
+                 <Button variant="ghost" size="sm" className="h-8 w-8 p-0">
+                   <RotateCw className="w-4 h-4" />
+            </Button>
+                 <Button variant="ghost" size="sm" className="h-8 w-8 p-0">
+                   <Maximize2 className="w-4 h-4" />
+          </Button>
+        </div>
+      </div>
                          <div className="flex-1 relative">
                {/* PDF Viewer using iframe */}
                <iframe
@@ -211,7 +325,7 @@ export function DocumentUploadAndViewer() {
                  onError={() => console.error('PDF loading error')}
                >
                  <div className="flex items-center justify-center h-full p-8">
-                   <div className="text-center">
+        <div className="text-center">
                      <div className="w-16 h-16 mx-auto mb-4 rounded-xl bg-gradient-to-br from-blue-500/20 to-purple-500/20 flex items-center justify-center">
                        <FileText className="w-8 h-8 text-blue-600 dark:text-blue-400" />
                      </div>
@@ -224,16 +338,38 @@ export function DocumentUploadAndViewer() {
                    </div>
                  </div>
                </iframe>
-             </div>
-          </div>
+                          </div>
+           </div>
 
-                     {/* Right pane - Extracted content - WIDER */}
-           <div className="w-2/5 backdrop-blur-xl bg-white/5 dark:bg-black/5 flex flex-col">
-            <div className="p-4 border-b border-white/20 dark:border-white/10">
-              <h3 className="text-lg font-semibold text-slate-800 dark:text-slate-200">
-                🧠 Extracted Content
-              </h3>
-            </div>
+           {/* Draggable Divider */}
+           <div 
+             className="w-2 backdrop-blur-sm bg-white/20 dark:bg-black/20 hover:bg-gradient-to-b hover:from-blue-500/30 hover:to-purple-500/30 cursor-col-resize transition-all duration-300 relative border-x border-white/30 dark:border-white/10 flex items-center justify-center group"
+             onMouseDown={(e) => {
+               setIsDragging(true);
+               e.preventDefault();
+             }}
+           >
+             <GripVertical className="w-4 h-4 text-slate-600 dark:text-slate-400 opacity-0 group-hover:opacity-100 transition-opacity" />
+           </div>
+
+           {/* Right pane - Extracted content - RESIZABLE */}
+           <div 
+             className="backdrop-blur-xl bg-white/5 dark:bg-black/5 flex flex-col"
+             style={{ width: `${(1 - paneRatio) * 100}%` }}
+           >
+                         <div className="p-4 border-b border-white/20 dark:border-white/10 flex items-center justify-between">
+               <h3 className="text-lg font-semibold text-slate-800 dark:text-slate-200">
+                 🧠 Extracted Content
+               </h3>
+               <div className="flex items-center space-x-2">
+                 <Badge variant="outline" className="text-xs">
+                   {analysisData?.elements?.length || 0} Elements
+                 </Badge>
+                 <Button variant="ghost" size="sm" className="h-8 w-8 p-0">
+                   <Maximize2 className="w-4 h-4" />
+                 </Button>
+               </div>
+             </div>
             <div className="flex-1 p-6 overflow-y-auto">
               {analysisData?.elements?.length > 0 ? (
                 <div className="space-y-4">
@@ -285,12 +421,17 @@ export function DocumentUploadAndViewer() {
               )}
             </div>
           </div>
-        </div>
-      </div>
-    );
-  }
+                 </div>
+       </div>
+     );
 
-  return (
+     // Use React Portal to render outside parent container
+     return typeof window !== 'undefined' 
+       ? createPortal(dualPaneContent, document.body)
+       : null;
+   }
+
+    return (
     <div className="w-full space-y-8">
       <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
         {/* Tab Headers with Glass Effect */}
@@ -329,9 +470,9 @@ export function DocumentUploadAndViewer() {
             </h2>
             <p className="text-lg text-slate-600 dark:text-slate-400 max-w-2xl mx-auto">
               Upload your PDF and watch our AI transform it into structured, searchable insights in seconds.
-            </p>
-          </div>
-
+                </p>
+              </div>
+              
           <UploadZone 
             onUpload={handleUpload}
             maxSize={100 * 1024 * 1024}
@@ -387,7 +528,7 @@ export function DocumentUploadAndViewer() {
                     <Badge variant="secondary" className="bg-white/20 dark:bg-black/20 text-xs">
                       {feature.badge}
                     </Badge>
-                  </div>
+            </div>
                   <CardTitle className="text-xl text-slate-800 dark:text-slate-200">
                     {feature.title}
                   </CardTitle>
@@ -674,6 +815,6 @@ export function DocumentUploadAndViewer() {
           )}
         </TabsContent>
       </Tabs>
-    </div>
-  );
+        </div>
+    );
 } 
