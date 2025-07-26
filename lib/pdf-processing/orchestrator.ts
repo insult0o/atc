@@ -43,7 +43,10 @@ interface ZoneDetectionResult {
   };
 }
 
+import { EnhancedLocalUnstructuredProcessor } from './enhanced-local-processor';
+
 export class ProcessingOrchestrator {
+  private enhancedProcessor: EnhancedLocalUnstructuredProcessor;
   private availableTools: ProcessingTool[];
   private confidenceThreshold: number;
 

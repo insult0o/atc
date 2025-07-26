@@ -4,8 +4,53 @@
       "command": "npx",
       "args": ["@playwright/mcp"],
       "env": {
-        "PLAYWRIGHT_HEADLESS": "false"
+        "PLAYWRIGHT_HEADLESS": "false",
+        "PLAYWRIGHT_TIMEOUT": "60000",
+        "PLAYWRIGHT_RETRIES": "2",
+        "TEST_ENV": "epic1_integration",
+        "PLAYWRIGHT_WORKERS": "4",
+        "PLAYWRIGHT_REPORTER": "html,json,junit"
       }
     }
+  },
+  "testConfig": {
+    "baseURL": "http://localhost:3000",
+    "testDir": "tests/e2e",
+    "fullyParallel": true,
+    "forbidOnly": true,
+    "retries": 2,
+    "workers": 4,
+    "use": {
+      "trace": "on-first-retry",
+      "screenshot": "only-on-failure",
+      "video": "retain-on-failure"
+    },
+         "projects": [
+       {
+         "name": "chromium",
+         "use": "Desktop Chrome"
+       },
+       {
+         "name": "firefox", 
+         "use": "Desktop Firefox"
+       },
+       {
+         "name": "webkit",
+         "use": "Desktop Safari"
+       },
+       {
+         "name": "mobile-chrome",
+         "use": "Pixel 5"
+       }
+     ]
+  },
+  "epic1TestSuites": {
+    "foundation": "tests/e2e/epic1/story4-foundation.spec.ts",
+    "zones": "tests/e2e/epic1/story5-zones.spec.ts", 
+    "pipeline": "tests/e2e/epic1/story6-pipeline.spec.ts",
+    "confidence": "tests/e2e/epic1/story7-confidence.spec.ts",
+    "integration": "tests/e2e/epic1/integration-workflows.spec.ts",
+    "performance": "tests/e2e/epic1/performance.spec.ts",
+    "regression": "tests/e2e/epic1/regression.spec.ts"
   }
 }

@@ -1,0 +1,134 @@
+version: '3.8'
+
+services:
+  # Main PDF Intelligence Application
+  pdf-intelligence:
+    build:
+      context: .
+      dockerfile: Dockerfile.dev
+    container_name: pdf-intelligence-app
+    ports:
+      - "3000:3000"
+    volumes:
+      - .:/app
+      - ./uploads:/app/uploads
+      - ./temp:/app/temp
+      - node_modules:/app/node_modules
+    environment:
+      - NODE_ENV=development
+      - NEXT_PUBLIC_API_URL=http://localhost:3000
+      - PYTHON_PATH=/usr/bin/python3
+      - UNSTRUCTURED_TEMP_DIR=/app/temp/unstructured
+      - UNSTRUCTURED_CACHE_DIR=/app/temp/unstructured/cache
+    depends_on:
+      - qdrant
+      - postgres
+    restart: unless-stopped
+
+  # Enhanced Unstructured Python Processor
+  unstructured-processor:
+    build:
+      context: ./docker/unstructured-local
+      dockerfile: Dockerfile
+    container_name: unstructured-processor
+    ports:
+      - "8001:8000"
+    volumes:
+      - ./uploads:/app/uploads:ro
+      - ./temp:/app/temp
+      - ./lib/python:/app/lib/python
+    environment:
+      - PYTHONPATH=/app
+      - TEMP_DIR=/app/temp
+      - CACHE_DIR=/app/temp/cache
+      - LOG_LEVEL=INFO
+      - PYTHONIOENCODING=utf-8
+    healthcheck:
+      test: ["CMD", "python", "-c", "import unstructured; print('OK')"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+    restart: unless-stopped
+
+  # Vector Database for Hybrid Storage
+  qdrant:
+    image: qdrant/qdrant:latest
+    container_name: qdrant-local
+    ports:
+      - "6333:6333"
+      - "6334:6334"
+    volumes:
+      - ./data/qdrant:/qdrant/storage
+    environment:
+      - QDRANT__SERVICE__HTTP_PORT=6333
+      - QDRANT__SERVICE__GRPC_PORT=6334
+      - QDRANT__LOG_LEVEL=INFO
+    restart: unless-stopped
+
+  # PostgreSQL for Metadata Storage
+  postgres:
+    image: postgres:15
+    container_name: postgres-local
+    ports:
+      - "5432:5432"
+    volumes:
+      - ./data/postgres:/var/lib/postgresql/data
+      - ./docker/postgres/init.sql:/docker-entrypoint-initdb.d/init.sql
+    environment:
+      - POSTGRES_DB=pdf_intelligence
+      - POSTGRES_USER=pdf_user
+      - POSTGRES_PASSWORD=pdf_password
+      - POSTGRES_INITDB_ARGS=--encoding=UTF-8 --lc-collate=C --lc-ctype=C
+    restart: unless-stopped
+
+  # Redis for Caching and Queue Management
+  redis:
+    image: redis:7-alpine
+    container_name: redis-local
+    ports:
+      - "6379:6379"
+    volumes:
+      - ./data/redis:/data
+    command: redis-server --appendonly yes --appendfsync everysec
+    restart: unless-stopped
+
+  # Optional: Monitoring with Prometheus
+  prometheus:
+    image: prom/prometheus:latest
+    container_name: prometheus-local
+    ports:
+      - "9090:9090"
+    volumes:
+      - ./docker/prometheus/prometheus.yml:/etc/prometheus/prometheus.yml
+      - ./data/prometheus:/prometheus
+    command:
+      - '--config.file=/etc/prometheus/prometheus.yml'
+      - '--storage.tsdb.path=/prometheus'
+      - '--web.console.libraries=/etc/prometheus/console_libraries'
+      - '--web.console.templates=/etc/prometheus/consoles'
+      - '--web.enable-lifecycle'
+    restart: unless-stopped
+    profiles: ["monitoring"]
+
+  # Optional: Grafana for Dashboards
+  grafana:
+    image: grafana/grafana:latest
+    container_name: grafana-local
+    ports:
+      - "3001:3000"
+    volumes:
+      - ./data/grafana:/var/lib/grafana
+      - ./docker/grafana/dashboards:/etc/grafana/provisioning/dashboards
+      - ./docker/grafana/datasources:/etc/grafana/provisioning/datasources
+    environment:
+      - GF_SECURITY_ADMIN_PASSWORD=admin
+      - GF_USERS_ALLOW_SIGN_UP=false
+    restart: unless-stopped
+    profiles: ["monitoring"]
+
+volumes:
+  node_modules:
+
+networks:
+  default:
+    name: pdf-intelligence-network 
