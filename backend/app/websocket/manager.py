@@ -270,7 +270,7 @@ class ConnectionManager:
             "active_connections": len(self.active_connections),
             "unique_users": len(self.user_connections),
             "active_rooms": len(self.rooms),
-            "queue_size": len(self.message_queue.queue)
+            "queue_size": self.message_queue._get_total_queue_size()
         }
     
     async def _cleanup_connection(self, client_id: str):

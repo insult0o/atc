@@ -187,7 +187,7 @@ class ErrorHandlerMiddleware(BaseHTTPMiddleware):
         
         return JSONResponse(
             status_code=exc.status_code,
-            content=error_response.dict(),
+            content=error_response.model_dump(mode='json'),
             headers=exc.headers
         )
     
@@ -221,7 +221,7 @@ class ErrorHandlerMiddleware(BaseHTTPMiddleware):
             f"Validation Error: {len(validation_errors)} field(s) failed validation",
             extra={
                 "request_id": request_id,
-                "validation_errors": [e.dict() for e in validation_errors],
+                "validation_errors": [str(e) for e in validation_errors],
                 "path": request.url.path,
                 "method": request.method
             }
@@ -229,7 +229,7 @@ class ErrorHandlerMiddleware(BaseHTTPMiddleware):
         
         return JSONResponse(
             status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
-            content=error_response.dict()
+            content=error_response.model_dump(mode='json')
         )
     
     async def _handle_http_exception(self, request: Request, exc: HTTPException) -> JSONResponse:
@@ -276,7 +276,7 @@ class ErrorHandlerMiddleware(BaseHTTPMiddleware):
         
         return JSONResponse(
             status_code=exc.status_code,
-            content=error_response.dict(),
+            content=error_response.model_dump(mode='json'),
             headers=exc.headers
         )
     
@@ -308,5 +308,5 @@ class ErrorHandlerMiddleware(BaseHTTPMiddleware):
         
         return JSONResponse(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            content=error_response.dict()
+            content=error_response.model_dump(mode='json')
         ) 

@@ -27,7 +27,7 @@ class Settings(BaseSettings):
     )
     
     # Database
-    database_url: str = Field(default="sqlite:///:memory:", env="DATABASE_URL")
+    database_url: str = Field(default="postgresql://demo:demo@localhost:5432/demo", env="DATABASE_URL")
     database_pool_size: int = Field(default=20, env="DATABASE_POOL_SIZE")
     database_max_overflow: int = Field(default=0, env="DATABASE_MAX_OVERFLOW")
     

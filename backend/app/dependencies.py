@@ -4,6 +4,7 @@ Dependency injection for FastAPI endpoints
 
 from fastapi import Depends
 from functools import lru_cache
+from typing import Optional
 import asyncpg
 from supabase import create_client, Client
 import redis.asyncio as redis
@@ -21,7 +22,7 @@ _db_pool = None
 _redis_client = None
 _supabase_client = None
 
-async def get_database_pool() -> asyncpg.Pool:
+async def get_database_pool() -> Optional[asyncpg.Pool]:
     """Get database connection pool"""
     global _db_pool
     if _db_pool is None:
@@ -37,8 +38,9 @@ async def get_database_pool() -> asyncpg.Pool:
             )
             logger.info("Database connection pool created successfully")
         except Exception as e:
-            logger.error(f"Failed to create database pool: {e}")
-            raise
+            logger.warning(f"Database not available (demo mode): {e}")
+            # Return None for demo mode - services will handle this gracefully
+            return None
     return _db_pool
 
 async def get_redis_client() -> redis.Redis:
