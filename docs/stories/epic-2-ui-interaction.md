@@ -1,91 +1,110 @@
-# Epic 2: UI Interaction
+# Epic 2: UI Interaction Features
 
 ## Overview
-Implement the dual-pane viewer and interactive zone management functionality.
+Implement the dual-pane interface, zone interaction features, and real-time updates for the PDF processing platform.
 
 ## User Stories
 
-### Story 1: Dual-Pane Viewer Implementation
-**As a user, I want to compare original and extracted content side by side**
+### Story 2.1: Dual-Pane Viewer Implementation
+**As a** user  
+**I want to** see the original PDF and extracted content side by side  
+**So that** I can verify extraction accuracy
 
-Tasks:
-1. Create dual-pane container component
-2. Implement PDF viewer using PDF.js
-3. Add extracted content viewer
-4. Implement synchronized scrolling
-5. Add zone highlighting
-6. Create responsive layout
+#### Acceptance Criteria
+1. Left pane shows original PDF
+2. Right pane shows extracted content
+3. Panes scroll synchronously
+4. Zones are highlighted in both panes
+5. Content formatting is preserved
+6. View is responsive
 
-Acceptance Criteria:
-- [ ] Shows PDF and extracted content side by side
-- [ ] Synchronizes scrolling between panes
-- [ ] Highlights corresponding zones
-- [ ] Responsive on different screen sizes
-- [ ] Smooth performance with large documents
+#### Technical Notes
+- PDF.js for PDF rendering
+- Canvas overlay for zones
+- Synchronized scroll handlers
+- Responsive layout components
 
-### Story 2: Zone Selection and Editing
-**As a user, I want to manually select zones and edit their content**
+### Story 2.2: Zone Selection and Editing
+**As a** user  
+**I want to** select and edit zones  
+**So that** I can correct extraction errors
 
-Tasks:
-1. Implement canvas-based zone selection
-2. Add zone resize/move functionality
-3. Create zone content editor
-4. Implement undo/redo system
-5. Add zone type switching
-6. Create zone metadata editor
+#### Acceptance Criteria
+1. Users can select zones by clicking
+2. Drag-select creates new zones
+3. Zone boundaries can be adjusted
+4. Zone type can be changed
+5. Content can be edited directly
+6. Changes are saved automatically
 
-Acceptance Criteria:
-- [ ] Allows precise zone selection
-- [ ] Supports zone resizing and moving
-- [ ] Provides content editing interface
-- [ ] Maintains edit history
-- [ ] Updates zone metadata
+#### Technical Notes
+- Canvas-based selection
+- Drag handlers
+- Content editor component
+- WebSocket updates
+- Undo/redo support
 
-### Story 3: Tool Selection and Reprocessing
-**As a user, I want to select specific tools and reprocess zones**
+### Story 2.3: Confidence Visualization
+**As a** user  
+**I want to** see confidence levels visually  
+**So that** I can identify problematic areas
 
-Tasks:
-1. Create tool selection interface
-2. Implement zone reprocessing
-3. Add processing progress indicator
-4. Create tool comparison view
-5. Implement confidence update
-6. Add processing history
+#### Acceptance Criteria
+1. High confidence zones are bright
+2. Low confidence zones are greyed out
+3. Confidence scores are displayed
+4. Tool information is shown
+5. Status indicators are clear
+6. Updates are real-time
 
-Acceptance Criteria:
-- [ ] Shows available tools for zone type
-- [ ] Allows tool selection
-- [ ] Displays processing progress
-- [ ] Shows confidence changes
-- [ ] Maintains processing history
+#### Technical Notes
+- CSS opacity for confidence
+- Real-time WebSocket updates
+- Tool status component
+- Visual feedback system
 
-### Story 4: Manual Correction Interface
-**As a user, I want to manually correct extracted content**
+### Story 2.4: Manual Override Controls
+**As a** user  
+**I want to** manually override extractions  
+**So that** I can fix incorrect content
 
-Tasks:
-1. Create content correction interface
-2. Implement table cell editor
-3. Add text formatting tools
-4. Create diagram annotation tools
-5. Implement correction tracking
-6. Add correction validation
+#### Acceptance Criteria
+1. Users can select different tools
+2. Manual edits are tracked
+3. Confidence set to 100% on override
+4. Previous versions are preserved
+5. Undo/revert is available
+6. Override status is clear
 
-Acceptance Criteria:
-- [ ] Provides appropriate editors by content type
-- [ ] Preserves formatting
-- [ ] Tracks all corrections
-- [ ] Validates corrections
-- [ ] Updates confidence scores
+#### Technical Notes
+- Tool selection UI
+- Version history tracking
+- WebSocket status updates
+- Undo/redo system
 
 ## Dependencies
 - PDF.js integration
-- Canvas support
 - WebSocket connection
-- State management setup
+- Content editor component
+- Zone manager service
 
-## Technical Notes
-- Use React with TypeScript
-- Implement shadcn/ui components
-- Use Tailwind v4 styling
-- Add proper error handling
-- Include performance optimizations 
+## Technical Risks
+1. PDF rendering performance
+2. Real-time sync complexity
+3. Canvas interaction bugs
+4. Browser compatibility
+
+## Story Points
+- Story 2.1: 13 points
+- Story 2.2: 8 points
+- Story 2.3: 5 points
+- Story 2.4: 8 points
+Total: 34 points
+
+## Definition of Done
+1. Code implemented and tested
+2. UI/UX review completed
+3. Accessibility verified
+4. Performance tested
+5. Cross-browser tested
+6. Documentation updated 

@@ -1,149 +1,170 @@
-# PDF Processing Platform PRD
+# PDF Intelligence Platform - Product Requirements Document
 
 ## Overview
-An AI-powered PDF processing platform that extracts, processes, and manages content from PDF documents with high accuracy and user control. The system uses multiple extraction tools, provides a dual-pane interface for verification, and supports comprehensive export options.
 
-## Core Features
+The PDF Intelligence Platform is an AI-powered PDF processing system that enables high-accuracy content extraction, interactive validation, and structured export for RAG and fine-tuning applications.
 
-### 1. PDF Content Extraction
-- Multi-tool extraction pipeline using unstructured, pdfplumber, pymupdf, camelot, and tabula
-- Content type support: paragraphs, tables, diagrams/charts
-- Zone-based processing with tool-specific metadata
-- Confidence scoring and thresholds:
-  - Paragraphs: ≥ 0.80
-  - Tables: ≥ 0.70
-  - Diagrams: ≥ 0.60
+### Vision Statement
+To provide a robust, user-friendly platform that combines multiple PDF extraction tools with interactive validation capabilities, delivering highly accurate structured content for AI training and RAG systems.
 
-### 2. Dual-Pane Interface
-- Split view showing original PDF and extracted content
-- Visual confidence indicators (bright vs greyed out)
-- Interactive zone selection and reprocessing
-- Manual correction capabilities
-- Undo/revert functionality
+### Core Value Proposition
+- Multi-tool extraction pipeline with confidence-based merging
+- Interactive dual-pane validation interface
+- Structured export formats for AI/ML applications
+- Comprehensive quality assurance and validation
 
-### 3. Processing Pipeline
-- Tool priority and fallback system
-- Weighted confidence merging
-- Error handling and placeholder insertion
-- Manual intervention flagging
-- Zone-specific metadata tracking
+## System Components
 
-### 4. Export System
-- Multiple output formats (RAG JSON, JSONL, logs)
-- Export validation and blocking
+### 1. PDF Processing Pipeline
+- Multiple extraction tools with priority-based fallback
+- Tool-specific confidence scoring
+- Content type detection and validation
+- Error handling and recovery
+
+### 2. Interactive UI
+- Dual-pane view for comparison
+- Visual confidence indicators
+- Zone-based editing and reprocessing
+- Manual override capabilities
+
+### 3. Export System
+- Multiple output formats
+- Validation and blocking logic
 - Partial export support
-- Comprehensive logging and manifest generation
+- Comprehensive logging
 
-## User Stories
+## Detailed Requirements
 
-### Content Extraction
-1. As a user, I want to upload a PDF and have it automatically processed
-2. As a user, I want to see which extraction tool was used for each zone
-3. As a user, I want to know the confidence level for each extracted element
-4. As a user, I want to be notified of extraction failures
+### Directory Structure
+```
+/
+├── .bmad-core/         # BMAD framework
+├── .cursor/            # Cursor rules
+├── .vscode/           
+│   └── mcp.json       # Playwright settings
+├── tests/             # Test files
+├── app/               # Frontend UI
+├── lib/               # Backend logic
+├── pdf-processing/    # Extraction logic
+├── output/            # Export outputs
+└── public/            # Assets
+```
 
-### Content Review & Editing
-1. As a user, I want to compare original and extracted content side by side
-2. As a user, I want to manually select zones for reprocessing
-3. As a user, I want to edit extracted content directly
-4. As a user, I want to undo my changes or revert to automatic extraction
+### Extraction Pipeline
 
-### Export & Management
-1. As a user, I want to export processed content in multiple formats
-2. As a user, I want to export specific pages or zones
-3. As a user, I want to see a log of all processing decisions
-4. As a user, I want to track manual corrections and changes
+#### Tools and Priority
+1. `unstructured` - Primary tool
+2. `pdfplumber` - Secondary for text
+3. `pymupdf` - Tertiary for text
+4. `camelot` - Primary for tables
+5. `tabula` - Secondary for tables/validation
 
-## Technical Requirements
+#### Content Types
+- Paragraph/text
+- Table
+- Diagram/chart
 
-### Frontend
-- React with TypeScript
-- shadcn/ui components
-- Tailwind v4 styling
-- Dual-pane viewer component
-- Interactive zone selection
-- Real-time confidence visualization
+#### Confidence Thresholds
+- Paragraph: ≥ 0.80
+- Table: ≥ 0.70
+- Diagram: ≥ 0.60
 
-### Backend
-- Python/TypeScript hybrid architecture
-- Tool integration and orchestration
-- Confidence calculation engine
-- Export format generation
-- Logging and manifest system
-
-### Processing Pipeline
-- Tool priority system
-- Fallback mechanism
-- Confidence threshold enforcement
-- Manual override handling
-- Error management
-
-### Export System
-- JSON schema validation
-- Export blocking logic
-- Partial export handling
-- Log and manifest generation
-
-## Data Schemas
-
-### Zone Metadata
+#### Zone Metadata Schema
 ```json
 {
   "zone_id": "string",
   "tool": "string",
   "confidence": "number",
-  "type": "table|text|diagram",
+  "type": "table/text/diagram",
   "page": "number",
   "status": "auto|manual_override|error"
 }
 ```
 
-### Export Structure
+### UI Requirements
+
+#### Dual-Pane Interface
+- Left: Original PDF view
+- Right: Extracted content view
+- Synchronized scrolling
+- Visual confidence indicators
+
+#### User Interactions
+- Zone selection and reprocessing
+- Tool selection for reprocessing
+- Manual content editing
+- Undo/revert capabilities
+
+#### Visual Indicators
+- High confidence: Bright display
+- Low confidence: Greyed out
+- Error state: Visual warning
+- Manual override: Special indicator
+
+### Export System
+
+#### Directory Structure
 ```
 /output/docX/
-    ├── rag_chunks.json      # RAG-ready content
-    ├── fine_tune.jsonl      # Training data
-    ├── corrections.json     # Manual corrections
-    ├── zone_manifest.json   # Zone metadata
-    └── export_log.md        # Processing history
+├── rag_chunks.json     # RAG-ready content
+├── fine_tune.jsonl     # Training data
+├── corrections.json    # User corrections
+├── zone_manifest.json  # Zone metadata
+└── export_log.md       # Process log
 ```
 
-## Non-Functional Requirements
+#### Export Rules
+- Block if unprocessed zones exist
+- Block if errors present (unless override)
+- Support partial export
+- Validate all output schemas
 
-### Performance
-- Tool processing timeout: 30 seconds per zone
-- UI responsiveness: < 100ms for zone highlighting
-- Export generation: < 5 seconds for standard documents
+### Quality Assurance
 
-### Security
-- Input validation for all PDF uploads
-- Secure storage of processed content
-- User action audit logging
+#### Automated Testing
+- PDF upload and processing
+- Tool fallback behavior
+- UI interaction testing
+- Export validation
+- Schema verification
 
-### Reliability
-- Automatic tool fallback on failure
-- Data preservation during processing
-- Manual correction backup
+#### Manual Testing
+- Visual inspection of extraction
+- Confidence indicator accuracy
+- User interaction flows
+- Export format validation
+
+## Technical Requirements
+
+### Frontend
+- Next.js with TypeScript
+- shadcn/ui components
+- Tailwind v4 styling
+- PDF.js for rendering
+- Canvas for zone selection
+- WebSocket for real-time updates
+
+### Backend
+- Python/TypeScript hybrid
+- FastAPI for API endpoints
+- WebSocket support
+- PDF processing tools integration
+- Export format generation
+
+### Testing
+- Playwright for e2e testing
+- MCP integration
+- CI pipeline support
+- Regression testing
 
 ## Success Metrics
-1. Extraction accuracy:
-   - Text: > 95% correct
-   - Tables: > 90% correct
-   - Diagrams: > 85% correct
+- Extraction accuracy > 95%
+- User correction rate < 10%
+- Export validation success > 99%
+- Test coverage > 90%
 
-2. User Experience:
-   - < 3 manual corrections per page
-   - < 2 tool fallbacks per document
-   - < 1 minute average processing time
-
-3. System Reliability:
-   - 99.9% uptime
-   - < 0.1% failed exports
-   - < 1% extraction errors
-
-## Future Considerations
-1. Additional extraction tools integration
-2. Machine learning for tool selection
-3. Batch processing capabilities
-4. API access for automation
-5. Custom extraction rules 
+## Constraints and Limitations
+- PDF size limit: 100MB
+- Max zones per page: 50
+- Concurrent processing: 5 documents
+- Export file size: < 1GB 

@@ -1,90 +1,106 @@
-# Epic 1: PDF Processing Core
+# Epic 1: PDF Processing Core Functionality
 
 ## Overview
-Implement the core PDF processing functionality including file upload, zone detection, and tool management.
+Implement the core PDF processing functionality including file upload, zone detection, tool integration, and confidence scoring.
 
 ## User Stories
 
-### Story 1: PDF Upload and Initial Processing
-**As a user, I want to upload a PDF and have it automatically processed**
+### Story 1.1: PDF Upload and Initial Processing
+**As a** user  
+**I want to** upload a PDF document  
+**So that** I can extract and process its content
 
-Tasks:
-1. Create PDF upload component with drag-drop
-2. Implement file validation
-3. Add upload progress indicator
-4. Create backend upload endpoint
-5. Implement initial PDF parsing
-6. Add WebSocket connection for progress updates
+#### Acceptance Criteria
+1. User can drag-drop or select PDF file
+2. System validates PDF format and size
+3. Upload progress is displayed
+4. Initial processing status is shown
+5. Zones are automatically detected
+6. Processing tools are initialized
 
-Acceptance Criteria:
-- [ ] Supports drag-drop and file selection
-- [ ] Validates PDF format and size
-- [ ] Shows upload progress
-- [ ] Displays processing status
-- [ ] Handles errors gracefully
+#### Technical Notes
+- Max file size: 100MB
+- Supported formats: PDF 1.4+
+- Upload endpoint: `/api/upload`
+- WebSocket updates for progress
 
-### Story 2: Zone Detection and Tool Assignment
-**As a user, I want the system to identify zones and assign appropriate tools**
+### Story 1.2: Zone Detection and Tool Assignment
+**As a** system  
+**I want to** detect content zones and assign appropriate tools  
+**So that** content can be extracted efficiently
 
-Tasks:
-1. Implement zone detection algorithm
-2. Create tool priority system
-3. Add tool assignment logic
-4. Implement zone metadata storage
-5. Create zone visualization component
-6. Add tool assignment feedback
+#### Acceptance Criteria
+1. System identifies text, table, and diagram zones
+2. Each zone is assigned a primary tool
+3. Zone metadata is generated
+4. Tool assignments follow priority rules
+5. Zone boundaries are clearly marked
 
-Acceptance Criteria:
-- [ ] Correctly identifies text, table, and diagram zones
-- [ ] Assigns most appropriate tool per zone
-- [ ] Stores zone metadata
-- [ ] Visualizes zones in UI
-- [ ] Shows tool assignments
+#### Technical Notes
+- Use PDF.js for initial rendering
+- Canvas-based zone detection
+- Tool priority configuration
+- Zone metadata schema
 
-### Story 3: Content Extraction Pipeline
-**As a user, I want the system to extract content using multiple tools**
+### Story 1.3: Content Extraction Pipeline
+**As a** system  
+**I want to** process each zone with assigned tools  
+**So that** content is extracted accurately
 
-Tasks:
-1. Implement tool manager service
-2. Add tool execution pipeline
-3. Create confidence calculation system
-4. Implement fallback mechanism
-5. Add extraction progress tracking
-6. Create extraction result storage
+#### Acceptance Criteria
+1. Tools process zones in priority order
+2. Confidence scores are calculated
+3. Fallback logic is implemented
+4. Processing status is tracked
+5. Errors are handled gracefully
 
-Acceptance Criteria:
-- [ ] Successfully extracts content using all tools
-- [ ] Calculates confidence scores
-- [ ] Handles tool failures gracefully
-- [ ] Shows extraction progress
-- [ ] Stores results properly
+#### Technical Notes
+- Tool execution timeouts
+- Confidence calculation rules
+- Error handling strategy
+- Status tracking via WebSocket
 
-### Story 4: Confidence Management
-**As a user, I want to see confidence levels for extracted content**
+### Story 1.4: Confidence Scoring and Merging
+**As a** system  
+**I want to** calculate and merge confidence scores  
+**So that** the best results are presented
 
-Tasks:
-1. Implement confidence visualization
-2. Add threshold management
-3. Create confidence merging logic
-4. Implement confidence updates
-5. Add confidence history tracking
+#### Acceptance Criteria
+1. Each tool provides confidence score
+2. Scores are weighted by tool priority
+3. Final confidence is calculated
+4. Thresholds are enforced
+5. Results are merged when needed
 
-Acceptance Criteria:
-- [ ] Shows confidence scores clearly
-- [ ] Applies correct thresholds
-- [ ] Merges multiple tool results
-- [ ] Updates in real-time
-- [ ] Tracks confidence history
+#### Technical Notes
+- Confidence thresholds by type
+- Weighted average calculation
+- Merge strategy implementation
+- Threshold configuration
 
 ## Dependencies
-- MongoDB for data storage
-- Redis for caching
 - PDF processing tools installed
-- WebSocket support enabled
+- WebSocket server configured
+- Storage system ready
+- Frontend components created
 
-## Technical Notes
-- Use FastAPI for backend
-- Implement proper error handling
-- Ensure proper resource cleanup
-- Add comprehensive logging
-- Include performance monitoring 
+## Technical Risks
+1. Tool installation complexity
+2. Processing performance
+3. Memory management
+4. Error handling edge cases
+
+## Story Points
+- Story 1.1: 5 points
+- Story 1.2: 8 points
+- Story 1.3: 13 points
+- Story 1.4: 8 points
+Total: 34 points
+
+## Definition of Done
+1. Code implemented and tested
+2. Unit tests passing
+3. Integration tests passing
+4. Documentation updated
+5. PR reviewed and merged
+6. Deployment verified 

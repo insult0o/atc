@@ -1,5 +1,5 @@
 version: 1.10.0
-installed_at: '2025-07-25T22:41:32.282Z'
+installed_at: '2025-07-26T00:05:32.719Z'
 install_type: expansion-pack
 expansion_pack_id: bmad-infrastructure-devops
 expansion_pack_name: bmad-infrastructure-devops
@@ -27,6 +27,9 @@ files:
       .bmad-infrastructure-devops/templates/infrastructure-architecture-tmpl.yaml
     hash: a3204be65e3ba95d
     modified: false
+  - path: .bmad-infrastructure-devops/checklists/infrastructure-checklist.md
+    hash: 354d52a34c3eb5aa
+    modified: false
   - path: .bmad-infrastructure-devops/tasks/validate-infrastructure.md
     hash: 7f809521d26f2ca3
     modified: false
@@ -44,9 +47,6 @@ files:
     modified: false
   - path: .bmad-infrastructure-devops/data/bmad-kb.md
     hash: a608321f9b01bc5d
-    modified: false
-  - path: .bmad-infrastructure-devops/checklists/infrastructure-checklist.md
-    hash: 354d52a34c3eb5aa
     modified: false
   - path: .bmad-infrastructure-devops/agents/infra-devops-platform.md
     hash: 7a42f1366af5afa9
