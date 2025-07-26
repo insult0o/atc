@@ -1,0 +1,494 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>PDF Intelligence Platform - Interactive Ecosystem Map</title>
+    <script src="https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.min.js"></script>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        .mermaid {
+            text-align: center;
+            margin: 20px 0;
+        }
+        .tab-content {
+            display: none;
+        }
+        .tab-content.active {
+            display: block;
+        }
+        .workflow-card {
+            transition: all 0.3s ease;
+        }
+        .workflow-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 10px 20px rgba(0,0,0,0.1);
+        }
+        .feature-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 20px;
+        }
+        .tree-node {
+            margin-left: 20px;
+            border-left: 2px solid #e5e7eb;
+            padding-left: 20px;
+            position: relative;
+        }
+        .tree-node::before {
+            content: '';
+            position: absolute;
+            left: -2px;
+            top: 20px;
+            width: 20px;
+            height: 2px;
+            background: #e5e7eb;
+        }
+        @keyframes pulse {
+            0% { opacity: 1; }
+            50% { opacity: 0.5; }
+            100% { opacity: 1; }
+        }
+        .status-active {
+            animation: pulse 2s infinite;
+        }
+    </style>
+</head>
+<body class="bg-gray-50">
+    <div class="container mx-auto px-4 py-8 max-w-7xl">
+        <!-- Header -->
+        <header class="text-center mb-12">
+            <h1 class="text-4xl font-bold text-gray-900 mb-4">
+                🗺️ PDF Intelligence Platform
+            </h1>
+            <p class="text-xl text-gray-600">Complete Ecosystem Map & Interactive Guide</p>
+        </header>
+
+        <!-- Navigation Tabs -->
+        <div class="mb-8 border-b border-gray-200">
+            <nav class="flex space-x-8">
+                <button onclick="showTab('overview')" class="tab-btn py-2 px-4 border-b-2 border-blue-500 text-blue-600 font-semibold">
+                    Overview
+                </button>
+                <button onclick="showTab('workflows')" class="tab-btn py-2 px-4 border-b-2 border-transparent hover:border-gray-300">
+                    User Workflows
+                </button>
+                <button onclick="showTab('architecture')" class="tab-btn py-2 px-4 border-b-2 border-transparent hover:border-gray-300">
+                    Architecture
+                </button>
+                <button onclick="showTab('features')" class="tab-btn py-2 px-4 border-b-2 border-transparent hover:border-gray-300">
+                    Features
+                </button>
+                <button onclick="showTab('integration')" class="tab-btn py-2 px-4 border-b-2 border-transparent hover:border-gray-300">
+                    Integration
+                </button>
+            </nav>
+        </div>
+
+        <!-- Tab Content -->
+        <div id="overview" class="tab-content active">
+            <div class="bg-white rounded-lg shadow-lg p-8 mb-8">
+                <h2 class="text-2xl font-bold mb-6">Platform Overview</h2>
+                <div class="mermaid">
+                    graph TB
+                        subgraph "Entry Points"
+                            Web[🌐 Web Interface]
+                            API[🔌 REST API]
+                            CLI[💻 CLI Tool]
+                        end
+                        
+                        subgraph "Core Systems"
+                            Upload[📤 Upload System]
+                            Process[⚙️ Processing Engine]
+                            View[👁️ Viewer System]
+                            Edit[✏️ Editor System]
+                            Export[📥 Export System]
+                        end
+                        
+                        subgraph "Backend"
+                            FastAPI[🚀 FastAPI Server]
+                            WebSocket[🔄 WebSocket Server]
+                            Database[(🗄️ PostgreSQL)]
+                        end
+                        
+                        Web --> Upload
+                        API --> Process
+                        CLI --> Export
+                        
+                        Upload --> Process
+                        Process --> View
+                        View --> Edit
+                        Edit --> Export
+                        
+                        Process --> FastAPI
+                        View --> WebSocket
+                        Export --> Database
+                        
+                        style Web fill:#3b82f6,color:#fff
+                        style API fill:#3b82f6,color:#fff
+                        style CLI fill:#3b82f6,color:#fff
+                        style Process fill:#10b981,color:#fff
+                        style FastAPI fill:#f59e0b,color:#fff
+                </div>
+            </div>
+
+            <!-- Key Statistics -->
+            <div class="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
+                <div class="bg-white rounded-lg shadow p-6">
+                    <div class="text-3xl font-bold text-blue-600">5</div>
+                    <div class="text-gray-600">PDF Processing Tools</div>
+                </div>
+                <div class="bg-white rounded-lg shadow p-6">
+                    <div class="text-3xl font-bold text-green-600">4</div>
+                    <div class="text-gray-600">Zone Types Supported</div>
+                </div>
+                <div class="bg-white rounded-lg shadow p-6">
+                    <div class="text-3xl font-bold text-purple-600">5</div>
+                    <div class="text-gray-600">Export Formats</div>
+                </div>
+                <div class="bg-white rounded-lg shadow p-6">
+                    <div class="text-3xl font-bold text-orange-600">35+</div>
+                    <div class="text-gray-600">Active Features</div>
+                </div>
+            </div>
+        </div>
+
+        <div id="workflows" class="tab-content">
+            <div class="space-y-8">
+                <!-- Workflow Cards -->
+                <div class="workflow-card bg-white rounded-lg shadow-lg p-6">
+                    <h3 class="text-xl font-bold mb-4 text-blue-600">🚀 Quick Extract Workflow</h3>
+                    <div class="mermaid">
+                        graph LR
+                            A[Upload PDF] --> B[Auto-process]
+                            B --> C[View Results]
+                            C --> D[Quick Export]
+                            style A fill:#e0e7ff
+                            style D fill:#dcfce7
+                    </div>
+                    <p class="text-gray-600 mt-4">Time: ~2-3 minutes | Best for: Quick data extraction</p>
+                </div>
+
+                <div class="workflow-card bg-white rounded-lg shadow-lg p-6">
+                    <h3 class="text-xl font-bold mb-4 text-green-600">🔍 Detailed Review Workflow</h3>
+                    <div class="mermaid">
+                        graph LR
+                            A[Upload] --> B[Process]
+                            B --> C[Review Zones]
+                            C --> D[Edit Content]
+                            D --> E[Validate]
+                            E --> F[Export]
+                            style A fill:#e0e7ff
+                            style F fill:#dcfce7
+                    </div>
+                    <p class="text-gray-600 mt-4">Time: ~10-15 minutes | Best for: High-accuracy requirements</p>
+                </div>
+
+                <div class="workflow-card bg-white rounded-lg shadow-lg p-6">
+                    <h3 class="text-xl font-bold mb-4 text-purple-600">👥 Collaborative Workflow</h3>
+                    <div class="mermaid">
+                        graph LR
+                            A[Upload] --> B[Share Link]
+                            B --> C[Multi-user Edit]
+                            C --> D[Review Changes]
+                            D --> E[Export]
+                            style A fill:#e0e7ff
+                            style E fill:#dcfce7
+                    </div>
+                    <p class="text-gray-600 mt-4">Time: Variable | Best for: Team projects</p>
+                </div>
+            </div>
+        </div>
+
+        <div id="architecture" class="tab-content">
+            <div class="bg-white rounded-lg shadow-lg p-8">
+                <h2 class="text-2xl font-bold mb-6">System Architecture</h2>
+                
+                <!-- Tech Stack Tree -->
+                <div class="mb-8">
+                    <h3 class="text-lg font-semibold mb-4">Technology Stack</h3>
+                    <div class="tree-structure">
+                        <div class="font-bold text-lg mb-2">Frontend</div>
+                        <div class="tree-node">
+                            <div class="font-semibold">Framework</div>
+                            <div class="tree-node text-gray-600">
+                                <div>Next.js 14.2.30</div>
+                                <div>React 18</div>
+                                <div>TypeScript 5.x</div>
+                            </div>
+                        </div>
+                        <div class="tree-node">
+                            <div class="font-semibold">UI Libraries</div>
+                            <div class="tree-node text-gray-600">
+                                <div>PDF.js</div>
+                                <div>Monaco Editor</div>
+                                <div>Tailwind CSS</div>
+                            </div>
+                        </div>
+                        
+                        <div class="font-bold text-lg mb-2 mt-6">Backend</div>
+                        <div class="tree-node">
+                            <div class="font-semibold">Framework</div>
+                            <div class="tree-node text-gray-600">
+                                <div>FastAPI</div>
+                                <div>Python 3.11+</div>
+                                <div>Pydantic v2</div>
+                            </div>
+                        </div>
+                        <div class="tree-node">
+                            <div class="font-semibold">PDF Processing</div>
+                            <div class="tree-node text-gray-600">
+                                <div>Unstructured.io</div>
+                                <div>PDFPlumber</div>
+                                <div>PyMuPDF</div>
+                                <div>Camelot</div>
+                                <div>Tabula</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Component Diagram -->
+                <div class="mermaid">
+                    graph TD
+                        subgraph "Frontend Layer"
+                            UI[Next.js App]
+                            UI --> Viewer[Viewer Components]
+                            UI --> Editor[Editor Components]
+                            UI --> Export[Export Components]
+                        end
+                        
+                        subgraph "State Management"
+                            Store[Zustand Store]
+                            Query[React Query]
+                        end
+                        
+                        subgraph "Backend Layer"
+                            API[FastAPI]
+                            WS[WebSocket]
+                            Workers[Celery Workers]
+                        end
+                        
+                        subgraph "Data Layer"
+                            DB[(PostgreSQL)]
+                            S3[S3 Storage]
+                        end
+                        
+                        UI --> Store
+                        UI --> Query
+                        Query --> API
+                        Store --> WS
+                        API --> DB
+                        Workers --> S3
+                </div>
+            </div>
+        </div>
+
+        <div id="features" class="tab-content">
+            <div class="bg-white rounded-lg shadow-lg p-8">
+                <h2 class="text-2xl font-bold mb-6">Feature Matrix</h2>
+                
+                <div class="feature-grid">
+                    <!-- PDF Processing Features -->
+                    <div class="bg-gray-50 rounded-lg p-6">
+                        <h3 class="font-bold text-lg mb-4 text-blue-600">📄 PDF Processing</h3>
+                        <ul class="space-y-2">
+                            <li class="flex items-center">
+                                <span class="status-active text-green-500 mr-2">●</span>
+                                Unstructured.io Integration
+                            </li>
+                            <li class="flex items-center">
+                                <span class="status-active text-green-500 mr-2">●</span>
+                                Multi-tool Processing
+                            </li>
+                            <li class="flex items-center">
+                                <span class="status-active text-green-500 mr-2">●</span>
+                                Zone Detection
+                            </li>
+                            <li class="flex items-center">
+                                <span class="status-active text-green-500 mr-2">●</span>
+                                Table Extraction
+                            </li>
+                        </ul>
+                    </div>
+
+                    <!-- Viewer Features -->
+                    <div class="bg-gray-50 rounded-lg p-6">
+                        <h3 class="font-bold text-lg mb-4 text-green-600">👁️ Viewer Features</h3>
+                        <ul class="space-y-2">
+                            <li class="flex items-center">
+                                <span class="status-active text-green-500 mr-2">●</span>
+                                Dual-pane View
+                            </li>
+                            <li class="flex items-center">
+                                <span class="status-active text-green-500 mr-2">●</span>
+                                Zone Highlighting
+                            </li>
+                            <li class="flex items-center">
+                                <span class="status-active text-green-500 mr-2">●</span>
+                                Synchronized Scrolling
+                            </li>
+                            <li class="flex items-center">
+                                <span class="status-active text-green-500 mr-2">●</span>
+                                Cross-highlighting
+                            </li>
+                        </ul>
+                    </div>
+
+                    <!-- Editor Features -->
+                    <div class="bg-gray-50 rounded-lg p-6">
+                        <h3 class="font-bold text-lg mb-4 text-purple-600">✏️ Editor Features</h3>
+                        <ul class="space-y-2">
+                            <li class="flex items-center">
+                                <span class="status-active text-green-500 mr-2">●</span>
+                                Monaco Editor
+                            </li>
+                            <li class="flex items-center">
+                                <span class="status-active text-green-500 mr-2">●</span>
+                                Rich Text Editing
+                            </li>
+                            <li class="flex items-center">
+                                <span class="status-active text-green-500 mr-2">●</span>
+                                Auto-save
+                            </li>
+                            <li class="flex items-center">
+                                <span class="status-active text-green-500 mr-2">●</span>
+                                Word Count
+                            </li>
+                        </ul>
+                    </div>
+
+                    <!-- Export Features -->
+                    <div class="bg-gray-50 rounded-lg p-6">
+                        <h3 class="font-bold text-lg mb-4 text-orange-600">📥 Export System</h3>
+                        <ul class="space-y-2">
+                            <li class="flex items-center">
+                                <span class="status-active text-green-500 mr-2">●</span>
+                                RAG Chunking
+                            </li>
+                            <li class="flex items-center">
+                                <span class="status-active text-green-500 mr-2">●</span>
+                                JSONL Export
+                            </li>
+                            <li class="flex items-center">
+                                <span class="status-active text-green-500 mr-2">●</span>
+                                Batch Export
+                            </li>
+                            <li class="flex items-center">
+                                <span class="status-active text-green-500 mr-2">●</span>
+                                Progress Tracking
+                            </li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div id="integration" class="tab-content">
+            <div class="bg-white rounded-lg shadow-lg p-8">
+                <h2 class="text-2xl font-bold mb-6">Integration Points</h2>
+                
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-8">
+                    <!-- API Endpoints -->
+                    <div>
+                        <h3 class="text-lg font-semibold mb-4">API Endpoints</h3>
+                        <div class="space-y-3">
+                            <div class="border-l-4 border-blue-500 pl-4">
+                                <code class="text-sm bg-gray-100 px-2 py-1 rounded">POST /api/upload</code>
+                                <p class="text-gray-600 text-sm mt-1">Upload PDF documents</p>
+                            </div>
+                            <div class="border-l-4 border-green-500 pl-4">
+                                <code class="text-sm bg-gray-100 px-2 py-1 rounded">GET /api/documents/{id}</code>
+                                <p class="text-gray-600 text-sm mt-1">Retrieve document data</p>
+                            </div>
+                            <div class="border-l-4 border-purple-500 pl-4">
+                                <code class="text-sm bg-gray-100 px-2 py-1 rounded">POST /api/export</code>
+                                <p class="text-gray-600 text-sm mt-1">Generate exports</p>
+                            </div>
+                            <div class="border-l-4 border-orange-500 pl-4">
+                                <code class="text-sm bg-gray-100 px-2 py-1 rounded">WS /ws/document/{id}</code>
+                                <p class="text-gray-600 text-sm mt-1">Real-time updates</p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- External Services -->
+                    <div>
+                        <h3 class="text-lg font-semibold mb-4">External Services</h3>
+                        <div class="space-y-3">
+                            <div class="flex items-center">
+                                <span class="text-2xl mr-3">☁️</span>
+                                <div>
+                                    <div class="font-semibold">Cloud Storage</div>
+                                    <div class="text-sm text-gray-600">S3, GCS, Azure Blob</div>
+                                </div>
+                            </div>
+                            <div class="flex items-center">
+                                <span class="text-2xl mr-3">🔐</span>
+                                <div>
+                                    <div class="font-semibold">Authentication</div>
+                                    <div class="text-sm text-gray-600">Auth0, Supabase Auth</div>
+                                </div>
+                            </div>
+                            <div class="flex items-center">
+                                <span class="text-2xl mr-3">📊</span>
+                                <div>
+                                    <div class="font-semibold">Analytics</div>
+                                    <div class="text-sm text-gray-600">GA, Mixpanel</div>
+                                </div>
+                            </div>
+                            <div class="flex items-center">
+                                <span class="text-2xl mr-3">🤖</span>
+                                <div>
+                                    <div class="font-semibold">LLM Services</div>
+                                    <div class="text-sm text-gray-600">OpenAI, Anthropic</div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Initialize Mermaid
+        mermaid.initialize({ 
+            startOnLoad: true,
+            theme: 'default',
+            themeVariables: {
+                primaryColor: '#3b82f6',
+                primaryTextColor: '#fff',
+                primaryBorderColor: '#2563eb',
+                lineColor: '#6b7280',
+                secondaryColor: '#10b981',
+                tertiaryColor: '#f59e0b'
+            }
+        });
+
+        // Tab switching function
+        function showTab(tabName) {
+            // Hide all tabs
+            document.querySelectorAll('.tab-content').forEach(tab => {
+                tab.classList.remove('active');
+            });
+            
+            // Remove active class from all buttons
+            document.querySelectorAll('.tab-btn').forEach(btn => {
+                btn.classList.remove('border-blue-500', 'text-blue-600', 'font-semibold');
+                btn.classList.add('border-transparent');
+            });
+            
+            // Show selected tab
+            document.getElementById(tabName).classList.add('active');
+            
+            // Update button styling
+            event.target.classList.remove('border-transparent');
+            event.target.classList.add('border-blue-500', 'text-blue-600', 'font-semibold');
+            
+            // Re-render Mermaid diagrams
+            mermaid.init();
+        }
+    </script>
+</body>
+</html>
