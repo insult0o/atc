@@ -42,10 +42,21 @@ export async function POST(request: Request) {
     const uploadDir = join(process.cwd(), 'uploads');
     await writeFile(join(uploadDir, filename), buffer);
 
-    // Return success response
+    // Generate document ID
+    const documentId = `doc_${timestamp}_${Math.random().toString(36).substring(7)}`;
+
+    // Return success response in expected format
     return NextResponse.json({
-      message: 'File uploaded successfully',
-      filename
+      documentId,
+      document: {
+        filename: file.name,
+        originalFilename: file.name,
+        storedFilename: filename,
+        size: file.size,
+        type: file.type,
+        uploadedAt: new Date().toISOString()
+      },
+      message: 'File uploaded successfully'
     });
   } catch (error) {
     console.error('Upload error:', error);
