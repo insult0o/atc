@@ -71,6 +71,7 @@ export function DocumentUploadAndViewer() {
 
           if (response.ok) {
             realAnalysisResult = await response.json();
+            realAnalysisResult.isRealData = true;  // Flag real data
             console.log('Real analysis completed successfully!');
           }
         }
@@ -78,8 +79,9 @@ export function DocumentUploadAndViewer() {
         console.log('Enhanced processor not available, using mock data:', processorError);
       }
       
-      // Use real analysis if available, otherwise use enhanced mock data
-      const analysisResult = realAnalysisResult || {
+             // Use real analysis if available, otherwise use enhanced mock data
+       const analysisResult = realAnalysisResult || {
+         isRealData: false,  // Flag to indicate this is mock data
         filename: uploadedDocument.document?.filename || 'document.pdf',
         total_elements: 18,
         processing_time_seconds: 2.1,
@@ -358,6 +360,15 @@ export function DocumentUploadAndViewer() {
                   <div className="flex items-center justify-between">
                     <h3 className="text-2xl font-bold bg-gradient-to-r from-purple-600 to-pink-600 bg-clip-text text-transparent">
                       🧠 Detailed AI Analysis
+                      {analysisData.isRealData ? (
+                        <span className="ml-3 text-sm bg-green-500/20 text-green-700 dark:text-green-300 px-2 py-1 rounded-full border border-green-500/30">
+                          ✅ Real AI Processing
+                        </span>
+                      ) : (
+                        <span className="ml-3 text-sm bg-blue-500/20 text-blue-700 dark:text-blue-300 px-2 py-1 rounded-full border border-blue-500/30">
+                          🧪 Demo Data
+                        </span>
+                      )}
                     </h3>
                     <Button 
                       onClick={() => setShowDetailedAnalysis(false)}
