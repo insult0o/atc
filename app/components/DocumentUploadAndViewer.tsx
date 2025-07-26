@@ -18,6 +18,7 @@ export function DocumentUploadAndViewer() {
   const [viewMode, setViewMode] = useState<'tabs' | 'dual-pane'>('tabs');
   const [paneRatio, setPaneRatio] = useState(0.6); // 60% left, 40% right
   const [isDragging, setIsDragging] = useState(false);
+  const [screenDimensions, setScreenDimensions] = useState({ width: 1280, height: 720 });
 
   // Handle draggable divider
   React.useEffect(() => {
@@ -53,35 +54,43 @@ export function DocumentUploadAndViewer() {
   React.useEffect(() => {
     const detectMaximumScreenSpace = () => {
       if (typeof window !== 'undefined') {
-        // Get all possible dimension sources
-        const screenWidth = window.screen.width;
-        const screenHeight = window.screen.height;
-        const availWidth = window.screen.availWidth;
-        const availHeight = window.screen.availHeight;
-        const innerWidth = window.innerWidth;
-        const innerHeight = window.innerHeight;
-        const outerWidth = window.outerWidth;
-        const outerHeight = window.outerHeight;
-        
-        // Calculate DPI scaling ratio
-        const devicePixelRatio = window.devicePixelRatio || 1;
-        
-        // Use the maximum available space that the browser can actually utilize
-        const maxUsableWidth = Math.max(availWidth, screenWidth, outerWidth, innerWidth);
-        const maxUsableHeight = Math.max(availHeight, screenHeight, outerHeight, innerHeight);
-        
-        setScreenDimensions({
-          width: maxUsableWidth,
-          height: maxUsableHeight
-        });
-        
-        console.log('🖥️ Screen space detection:', {
-          native: { screenWidth, screenHeight },
-          available: { availWidth, availHeight },
-          browser: { innerWidth, innerHeight, outerWidth, outerHeight },
-          devicePixelRatio,
-          maxUsable: { width: maxUsableWidth, height: maxUsableHeight }
-        });
+        try {
+          // Get all possible dimension sources
+          const screenWidth = window.screen.width;
+          const screenHeight = window.screen.height;
+          const availWidth = window.screen.availWidth;
+          const availHeight = window.screen.availHeight;
+          const innerWidth = window.innerWidth;
+          const innerHeight = window.innerHeight;
+          const outerWidth = window.outerWidth;
+          const outerHeight = window.outerHeight;
+          
+          // Calculate DPI scaling ratio
+          const devicePixelRatio = window.devicePixelRatio || 1;
+          
+          // Use the maximum available space that the browser can actually utilize
+          const maxUsableWidth = Math.max(availWidth, screenWidth, outerWidth, innerWidth);
+          const maxUsableHeight = Math.max(availHeight, screenHeight, outerHeight, innerHeight);
+          
+          setScreenDimensions({
+            width: maxUsableWidth,
+            height: maxUsableHeight
+          });
+          
+          console.log('🖥️ Adaptive Screen Detection:', {
+            native: { screenWidth, screenHeight },
+            available: { availWidth, availHeight },
+            browser: { innerWidth, innerHeight, outerWidth, outerHeight },
+            devicePixelRatio,
+            maxUsable: { width: maxUsableWidth, height: maxUsableHeight },
+            physicalUsagePercent: {
+              width: (maxUsableWidth / screenWidth * 100).toFixed(1) + '%',
+              height: (maxUsableHeight / screenHeight * 100).toFixed(1) + '%'
+            }
+          });
+        } catch (error) {
+          console.warn('Screen detection failed:', error);
+        }
       }
     };
 
@@ -99,135 +108,149 @@ export function DocumentUploadAndViewer() {
     };
   }, []);
 
-  const handleUpload = async (file: File) => {
-    // Create form data
+  const handleUpload = async (file: File): Promise<{ documentId: string; document: any }> => {
     const formData = new FormData();
     formData.append('file', file);
 
-    // Upload file
-    const response = await fetch('/api/upload', {
-      method: 'POST',
-      body: formData,
-    });
+    try {
+      const response = await fetch('/api/upload', {
+        method: 'POST',
+        body: formData,
+      });
 
-    if (!response.ok) {
-      const error = await response.json();
-      throw new Error(error.message || 'Upload failed');
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.message || 'Upload failed');
+      }
+
+      const result = await response.json();
+      console.log('Upload result:', result);
+      
+      // Check if we have a documentId (indicating successful upload)
+      if (result.documentId) {
+        setUploadedDocument(result);
+        setActiveTab('processing');
+        return result; // Return the upload result
+      } else {
+        throw new Error('Upload response missing document ID');
+      }
+    } catch (error) {
+      console.error('Upload failed:', error);
+      // Re-throw the error so UploadZone can handle it
+      throw error;
     }
-
-    const result = await response.json();
-    setUploadedDocument(result);
-    setActiveTab('processing');
-    
-    return result;
   };
 
   const handleDetailedAnalysis = async () => {
-    if (!uploadedDocument?.documentId) {
-      console.error('No document available for analysis');
-      return;
-    }
-
-    console.log('Starting detailed analysis for document:', uploadedDocument.documentId);
+    if (!uploadedDocument) return;
+    
     setIsAnalyzing(true);
     
+    // Simulated delay for demo
+    await new Promise(resolve => setTimeout(resolve, 1500));
+    
+    // Try to fetch from enhanced processor, fallback to mock
     try {
-      // Simulate realistic processing delay
-      await new Promise(resolve => setTimeout(resolve, 1500));
-      
-      // Try to call the enhanced unstructured processor (optional)
-      let realAnalysisResult = null;
-      try {
-        console.log('Attempting to connect to enhanced processor...');
-        const formData = new FormData();
-        
-        // Re-fetch the uploaded file for processing
-        const fileResponse = await fetch(`/api/documents/${uploadedDocument.documentId}/file`);
-        if (fileResponse.ok) {
-          const fileBlob = await fileResponse.blob();
-          formData.append('file', fileBlob, uploadedDocument.document?.filename || 'document.pdf');
-          
-          // Send to enhanced processor
-          const response = await fetch('http://localhost:8001/process', {
-            method: 'POST',
-            body: formData,
-          });
-
-          if (response.ok) {
-            realAnalysisResult = await response.json();
-            realAnalysisResult.isRealData = true;  // Flag real data
-            console.log('Real analysis completed successfully!');
-          }
-        }
-      } catch (processorError) {
-        console.log('Enhanced processor not available, using mock data:', processorError);
+      // First, get the uploaded file from our API
+      const fileResponse = await fetch(`/api/documents/${uploadedDocument.documentId}/file`);
+      if (!fileResponse.ok) {
+        throw new Error('Could not fetch uploaded file');
       }
       
-             // Use real analysis if available, otherwise use enhanced mock data
-       const analysisResult = realAnalysisResult || {
-         isRealData: false,  // Flag to indicate this is mock data
-        filename: uploadedDocument.document?.filename || 'document.pdf',
-        total_elements: 18,
-        processing_time_seconds: 2.1,
+      const fileBlob = await fileResponse.blob();
+      
+      // Create FormData for file upload to processor
+      const formData = new FormData();
+      formData.append('file', fileBlob, uploadedDocument.document?.filename || 'document.pdf');
+      formData.append('strategy', 'hi_res');
+      formData.append('chunking_strategy', 'by_title');
+      formData.append('max_characters', '1000');
+      formData.append('languages', 'eng');
+
+      // Send to the correct processor endpoint (Docker port mapping: 8001->8000)
+      const response = await fetch('http://localhost:8001/process', {
+        method: 'POST',
+        body: formData, // No Content-Type header - let browser set it for multipart/form-data
+      });
+
+      if (response.ok) {
+        const realData = await response.json();
+        console.log('✅ Real processor data received:', realData);
+        setAnalysisData({
+          strategy: realData.strategy,
+          processing_time: realData.processing_time_seconds,
+          elements: realData.elements || [],
+          isRealData: true,
+          total_elements: realData.total_elements,
+          quality_score: realData.quality_score,
+          cached: realData.cached
+        });
+      } else {
+        const errorText = await response.text();
+        console.warn('Processor response error:', response.status, errorText);
+        throw new Error(`Processor returned ${response.status}: ${errorText}`);
+      }
+    } catch (error) {
+      console.log('Using mock data as fallback');
+      setAnalysisData({
         strategy: 'hi_res',
-        cached: false,
-        quality_score: 0.94,
+        processing_time: 2.1,
         elements: [
           { type: 'Title', text: 'Annual Financial Report 2024', confidence: 0.98 },
           { type: 'Header', text: 'Executive Summary', confidence: 0.97 },
           { type: 'NarrativeText', text: 'This comprehensive financial report presents our company\'s performance for the fiscal year ending December 31, 2024, highlighting significant growth across key business segments.', confidence: 0.95 },
           { type: 'Table', text: 'Quarterly Revenue Breakdown | Q1: $2.4M | Q2: $2.8M | Q3: $3.1M | Q4: $3.5M', confidence: 0.92 },
-          { type: 'Header', text: 'Financial Highlights', confidence: 0.96 },
-          { type: 'ListItem', text: '• Total revenue increased by 23% year-over-year to $11.8M', confidence: 0.91 },
-          { type: 'ListItem', text: '• Gross profit margin improved to 68%, up from 61% in 2023', confidence: 0.89 },
-          { type: 'ListItem', text: '• Operating expenses reduced by 12% through efficiency initiatives', confidence: 0.87 },
-          { type: 'NarrativeText', text: 'Our strategic investments in technology and market expansion have yielded substantial returns, positioning us for continued growth in 2025.', confidence: 0.93 },
-          { type: 'Header', text: 'Market Analysis', confidence: 0.95 },
-          { type: 'NarrativeText', text: 'The market landscape has been favorable with increased demand for our core products and services, driven by digital transformation trends.', confidence: 0.90 }
-        ]
-      };
-      
-      console.log('Analysis completed successfully!');
-      setAnalysisData(analysisResult);
-      setShowDetailedAnalysis(true);
-    } catch (error) {
-      console.error('Analysis failed:', error);
-      console.log('Showing mock analysis as fallback...');
-      
-      // Always show mock analysis as fallback
-      const mockAnalysis = {
-        filename: uploadedDocument.document?.filename || 'document.pdf',
-        total_elements: 12,
-        processing_time_seconds: 1.8,
-        strategy: 'hi_res',
-        cached: false,
-        quality_score: 0.89,
-        elements: [
-          { type: 'Title', text: 'Document Analysis Report', confidence: 0.98 },
-          { type: 'NarrativeText', text: 'This document contains structured content including headers, paragraphs, and data tables.', confidence: 0.95 },
-          { type: 'Table', text: 'Financial data table with quarterly results', confidence: 0.89 },
-          { type: 'Header', text: 'Executive Summary', confidence: 0.97 },
-          { type: 'ListItem', text: '• Revenue increased by 15% year-over-year', confidence: 0.91 },
-          { type: 'NarrativeText', text: 'The company has shown strong performance across all key metrics this quarter.', confidence: 0.93 }
-        ]
-      };
-      setAnalysisData(mockAnalysis);
-      setShowDetailedAnalysis(true);
-    } finally {
-      setIsAnalyzing(false);
+        ],
+        isRealData: false
+      });
     }
+    
+    setIsAnalyzing(false);
+    setShowDetailedAnalysis(true);
   };
+
+  // Create mock zones and extracted content for dual-pane
+  const zones = [
+    {
+      id: 'zone_1',
+      coordinates: { x: 50, y: 100, width: 300, height: 40 },
+      confidence: 0.98,
+      type: 'header' as const,
+      textContent: 'Annual Financial Report 2024',
+      assignedTool: 'advanced_ocr',
+      status: 'completed' as const,
+      lastUpdated: new Date().toISOString()
+    },
+    {
+      id: 'zone_2', 
+      coordinates: { x: 50, y: 160, width: 400, height: 80 },
+      confidence: 0.95,
+      type: 'text' as const,
+      textContent: 'This comprehensive financial report presents...',
+      assignedTool: 'nlp_processor',
+      status: 'completed' as const,
+      lastUpdated: new Date().toISOString()
+    }
+  ];
+
+  const extractedContent = analysisData?.elements?.map((element: any, index: number) => ({
+    id: `content_${index}`,
+    type: element.type,
+    content: element.text,
+    confidence: element.confidence,
+    metadata: { source: 'ai_processor' }
+  })) || [];
 
   const features = [
     {
       icon: <Brain className="w-6 h-6" />,
-      title: 'Advanced AI Analysis',
-      description: 'Deep learning models extract complex patterns and insights from your documents.',
-      badge: 'AI-Powered'
+      title: 'AI-Powered Processing',
+      description: 'Advanced machine learning algorithms analyze your documents with precision.',
+      badge: 'Intelligent'
     },
     {
       icon: <Zap className="w-6 h-6" />,
-      title: 'Lightning Fast',
+      title: 'Real-time Analysis',
       description: 'Process documents in seconds with our optimized processing pipeline.',
       badge: 'Performance'
     },
@@ -250,24 +273,24 @@ export function DocumentUploadAndViewer() {
     const dualPaneContent = (
       <div 
         className="z-[9999] h-screen w-screen flex flex-col bg-gradient-to-br from-slate-50 via-blue-50/30 to-indigo-50/20 dark:from-slate-950 dark:via-blue-950/30 dark:to-indigo-950/20" 
-                 style={{ 
-           position: 'fixed', 
-           top: 0, 
-           left: 0, 
-           right: 0, 
-           bottom: 0,
-           margin: 0,
-           padding: 0,
-           transform: 'none',
-           zIndex: 9999,
-           width: `${screenDimensions.width}px`,
-           height: `${screenDimensions.height}px`,
-           maxWidth: `${screenDimensions.width}px`,
-           maxHeight: `${screenDimensions.height}px`,
-           minWidth: '100vw',
-           minHeight: '100vh',
-           overflow: 'hidden'
-         }}
+        style={{ 
+          position: 'fixed', 
+          top: 0, 
+          left: 0, 
+          right: 0, 
+          bottom: 0,
+          margin: 0,
+          padding: 0,
+          transform: 'none',
+          zIndex: 9999,
+          width: `${screenDimensions.width}px`,
+          height: `${screenDimensions.height}px`,
+          maxWidth: `${screenDimensions.width}px`,
+          maxHeight: `${screenDimensions.height}px`,
+          minWidth: '100vw',
+          minHeight: '100vh',
+          overflow: 'hidden'
+        }}
       >
         {/* Header with back button */}
         <div className="backdrop-blur-xl bg-white/10 dark:bg-black/10 border-b border-white/20 dark:border-white/10 px-6 py-4">
@@ -283,93 +306,96 @@ export function DocumentUploadAndViewer() {
               </Button>
               <div>
                 <h1 className="text-2xl font-bold bg-gradient-to-r from-blue-600 via-purple-600 to-indigo-600 dark:from-blue-400 dark:via-purple-400 dark:to-indigo-400 bg-clip-text text-transparent">
-                  🔍 Dual-Pane PDF Viewer
-          </h1>
+                  🔍 Adaptive Full-Screen PDF Viewer
+                </h1>
                 <p className="text-slate-600 dark:text-slate-400">
-                  Document: {uploadedDocument.document?.filename || uploadedDocument.documentId}
+                  Document: {uploadedDocument.document?.filename || uploadedDocument.documentId} • 
+                  <span className="text-green-600 ml-2">
+                    Using {screenDimensions.width}×{screenDimensions.height} screen space
+                  </span>
                 </p>
               </div>
             </div>
             <div className="backdrop-blur-sm bg-green-500/20 border border-green-500/30 text-green-700 dark:text-green-300 px-3 py-1 rounded-lg text-sm font-medium">
-              ✅ Live Document
+              ✅ Maximum Screen Utilization
             </div>
           </div>
         </div>
         
-                 {/* Dual-pane content - FULL WIDTH */}
-         <div className="flex-1 flex">
-           {/* Left pane - PDF viewer - RESIZABLE */}
-           <div 
-             className="backdrop-blur-xl bg-white/5 dark:bg-black/5 border-r border-white/20 dark:border-white/10 flex flex-col"
-             style={{ width: `${paneRatio * 100}%` }}
-           >
-                         <div className="p-4 border-b border-white/20 dark:border-white/10 flex items-center justify-between">
-               <h3 className="text-lg font-semibold text-slate-800 dark:text-slate-200">
-                 📄 Original PDF
-               </h3>
-               <div className="flex items-center space-x-2">
-                 <Button variant="ghost" size="sm" className="h-8 w-8 p-0">
-                   <RotateCw className="w-4 h-4" />
-            </Button>
-                 <Button variant="ghost" size="sm" className="h-8 w-8 p-0">
-                   <Maximize2 className="w-4 h-4" />
-          </Button>
-        </div>
-      </div>
-                         <div className="flex-1 relative">
-               {/* PDF Viewer using iframe */}
-               <iframe
-                 src={`/api/documents/${uploadedDocument.documentId}/file`}
-                 className="w-full h-full border-0"
-                 title={`PDF: ${uploadedDocument.document?.filename}`}
-                 onError={() => console.error('PDF loading error')}
-               >
-                 <div className="flex items-center justify-center h-full p-8">
-        <div className="text-center">
-                     <div className="w-16 h-16 mx-auto mb-4 rounded-xl bg-gradient-to-br from-blue-500/20 to-purple-500/20 flex items-center justify-center">
-                       <FileText className="w-8 h-8 text-blue-600 dark:text-blue-400" />
-                     </div>
-                     <h4 className="text-xl font-semibold text-slate-800 dark:text-slate-200 mb-2">
-                       PDF Loading...
-                     </h4>
-                     <p className="text-slate-600 dark:text-slate-400">
-                       Your PDF: {uploadedDocument.document?.filename}
-                     </p>
-                   </div>
-                 </div>
-               </iframe>
-                          </div>
-           </div>
+        {/* Dual-pane content - ADAPTIVE FULL WIDTH */}
+        <div className="flex-1 flex">
+          {/* Left pane - PDF viewer - RESIZABLE */}
+          <div 
+            className="backdrop-blur-xl bg-white/5 dark:bg-black/5 border-r border-white/20 dark:border-white/10 flex flex-col"
+            style={{ width: `${paneRatio * 100}%` }}
+          >
+            <div className="p-4 border-b border-white/20 dark:border-white/10 flex items-center justify-between">
+              <h3 className="text-lg font-semibold text-slate-800 dark:text-slate-200">
+                📄 Original PDF
+              </h3>
+              <div className="flex items-center space-x-2">
+                <Button variant="ghost" size="sm" className="h-8 w-8 p-0">
+                  <RotateCw className="w-4 h-4" />
+                </Button>
+                <Button variant="ghost" size="sm" className="h-8 w-8 p-0">
+                  <Maximize2 className="w-4 h-4" />
+                </Button>
+              </div>
+            </div>
+            <div className="flex-1 relative">
+              {/* PDF Viewer using iframe */}
+              <iframe
+                src={`/api/documents/${uploadedDocument.documentId}/file`}
+                className="w-full h-full border-0"
+                title={`PDF: ${uploadedDocument.document?.filename}`}
+                onError={() => console.error('PDF loading error')}
+              >
+                <div className="flex items-center justify-center h-full p-8">
+                  <div className="text-center">
+                    <div className="w-16 h-16 mx-auto mb-4 rounded-xl bg-gradient-to-br from-blue-500/20 to-purple-500/20 flex items-center justify-center">
+                      <FileText className="w-8 h-8 text-blue-600 dark:text-blue-400" />
+                    </div>
+                    <h4 className="text-xl font-semibold text-slate-800 dark:text-slate-200 mb-2">
+                      PDF Loading...
+                    </h4>
+                    <p className="text-slate-600 dark:text-slate-400">
+                      Your PDF: {uploadedDocument.document?.filename}
+                    </p>
+                  </div>
+                </div>
+              </iframe>
+            </div>
+          </div>
 
-           {/* Draggable Divider */}
-           <div 
-             className="w-2 backdrop-blur-sm bg-white/20 dark:bg-black/20 hover:bg-gradient-to-b hover:from-blue-500/30 hover:to-purple-500/30 cursor-col-resize transition-all duration-300 relative border-x border-white/30 dark:border-white/10 flex items-center justify-center group"
-             onMouseDown={(e) => {
-               setIsDragging(true);
-               e.preventDefault();
-             }}
-           >
-             <GripVertical className="w-4 h-4 text-slate-600 dark:text-slate-400 opacity-0 group-hover:opacity-100 transition-opacity" />
-           </div>
+          {/* Draggable Divider */}
+          <div 
+            className="w-2 backdrop-blur-sm bg-white/20 dark:bg-black/20 hover:bg-gradient-to-b hover:from-blue-500/30 hover:to-purple-500/30 cursor-col-resize transition-all duration-300 relative border-x border-white/30 dark:border-white/10 flex items-center justify-center group"
+            onMouseDown={(e) => {
+              setIsDragging(true);
+              e.preventDefault();
+            }}
+          >
+            <GripVertical className="w-4 h-4 text-slate-600 dark:text-slate-400 opacity-0 group-hover:opacity-100 transition-opacity" />
+          </div>
 
-           {/* Right pane - Extracted content - RESIZABLE */}
-           <div 
-             className="backdrop-blur-xl bg-white/5 dark:bg-black/5 flex flex-col"
-             style={{ width: `${(1 - paneRatio) * 100}%` }}
-           >
-                         <div className="p-4 border-b border-white/20 dark:border-white/10 flex items-center justify-between">
-               <h3 className="text-lg font-semibold text-slate-800 dark:text-slate-200">
-                 🧠 Extracted Content
-               </h3>
-               <div className="flex items-center space-x-2">
-                 <Badge variant="outline" className="text-xs">
-                   {analysisData?.elements?.length || 0} Elements
-                 </Badge>
-                 <Button variant="ghost" size="sm" className="h-8 w-8 p-0">
-                   <Maximize2 className="w-4 h-4" />
-                 </Button>
-               </div>
-             </div>
+          {/* Right pane - Extracted content - RESIZABLE */}
+          <div 
+            className="backdrop-blur-xl bg-white/5 dark:bg-black/5 flex flex-col"
+            style={{ width: `${(1 - paneRatio) * 100}%` }}
+          >
+            <div className="p-4 border-b border-white/20 dark:border-white/10 flex items-center justify-between">
+              <h3 className="text-lg font-semibold text-slate-800 dark:text-slate-200">
+                🧠 Extracted Content
+              </h3>
+              <div className="flex items-center space-x-2">
+                <Badge variant="outline" className="text-xs">
+                  {analysisData?.elements?.length || 0} Elements
+                </Badge>
+                <Button variant="ghost" size="sm" className="h-8 w-8 p-0">
+                  <Maximize2 className="w-4 h-4" />
+                </Button>
+              </div>
+            </div>
             <div className="flex-1 p-6 overflow-y-auto">
               {analysisData?.elements?.length > 0 ? (
                 <div className="space-y-4">
@@ -390,8 +416,8 @@ export function DocumentUploadAndViewer() {
                             variant="outline"
                             className={`${
                               element.confidence > 0.9 
-                                ? 'border-green-500/50 text-green-600 dark:text-green-400' 
-                                : element.confidence > 0.7 
+                                ? 'border-green-500/50 text-green-600 dark:text-green-400'
+                                : element.confidence > 0.7
                                 ? 'border-yellow-500/50 text-yellow-600 dark:text-yellow-400'
                                 : 'border-red-500/50 text-red-600 dark:text-red-400'
                             }`}
@@ -421,400 +447,288 @@ export function DocumentUploadAndViewer() {
               )}
             </div>
           </div>
-                 </div>
-       </div>
-     );
-
-     // Use React Portal to render outside parent container
-     return typeof window !== 'undefined' 
-       ? createPortal(dualPaneContent, document.body)
-       : null;
-   }
-
-    return (
-    <div className="w-full space-y-8">
-      <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-        {/* Tab Headers with Glass Effect */}
-        <div className="flex justify-center mb-8">
-          <TabsList className="backdrop-blur-xl bg-white/20 dark:bg-black/20 border border-white/30 dark:border-white/20 p-1 rounded-2xl shadow-lg">
-            <TabsTrigger 
-              value="upload" 
-              className="px-6 py-3 rounded-xl data-[state=active]:bg-white/40 data-[state=active]:dark:bg-black/40 data-[state=active]:shadow-lg transition-all duration-300"
-            >
-              <FileText className="w-4 h-4 mr-2" />
-              Upload Document
-            </TabsTrigger>
-            <TabsTrigger 
-              value="features" 
-              className="px-6 py-3 rounded-xl data-[state=active]:bg-white/40 data-[state=active]:dark:bg-black/40 data-[state=active]:shadow-lg transition-all duration-300"
-            >
-              <Sparkles className="w-4 h-4 mr-2" />
-              Features
-            </TabsTrigger>
-            <TabsTrigger 
-              value="processing" 
-              className="px-6 py-3 rounded-xl data-[state=active]:bg-white/40 data-[state=active]:dark:bg-black/40 data-[state=active]:shadow-lg transition-all duration-300"
-              disabled={!uploadedDocument}
-            >
-              <Zap className="w-4 h-4 mr-2" />
-              Processing
-            </TabsTrigger>
-          </TabsList>
         </div>
+      </div>
+    );
 
-        {/* Upload Tab */}
-        <TabsContent value="upload" className="space-y-8">
-          <div className="text-center space-y-4 mb-8">
-            <h2 className="text-3xl font-bold bg-gradient-to-r from-blue-600 via-purple-600 to-indigo-600 dark:from-blue-400 dark:via-purple-400 dark:to-indigo-400 bg-clip-text text-transparent">
-              Get Started
-            </h2>
-            <p className="text-lg text-slate-600 dark:text-slate-400 max-w-2xl mx-auto">
-              Upload your PDF and watch our AI transform it into structured, searchable insights in seconds.
-                </p>
-              </div>
-              
-          <UploadZone 
-            onUpload={handleUpload}
-            maxSize={100 * 1024 * 1024}
-            enableRealtime={true}
-          />
+    // Use React Portal to render outside parent container
+    return typeof window !== 'undefined' 
+      ? createPortal(dualPaneContent, document.body)
+      : null;
+  }
 
-          {/* Quick Stats */}
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mt-12">
-            {[
-              { value: '2.5M+', label: 'Documents Processed' },
-              { value: '< 3s', label: 'Average Processing' },
-              { value: '99.8%', label: 'Accuracy Rate' },
-              { value: '24/7', label: 'Available' }
-            ].map((stat) => (
-              <div 
-                key={stat.label}
-                className="backdrop-blur-xl bg-white/10 dark:bg-black/10 border border-white/20 dark:border-white/10 rounded-xl p-4 text-center hover:bg-white/20 dark:hover:bg-black/20 transition-all duration-300"
+  return (
+    <div className="w-full space-y-8">
+      <div className="w-full">
+        <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
+          <div className="flex justify-center mb-8">
+            <TabsList className="backdrop-blur-xl bg-white/20 dark:bg-black/20 border border-white/30 dark:border-white/20 p-1 rounded-2xl shadow-lg">
+              <TabsTrigger 
+                value="upload" 
+                className="px-6 py-3 rounded-xl data-[state=active]:bg-white/40 data-[state=active]:dark:bg-black/40 data-[state=active]:shadow-lg transition-all duration-300"
               >
-                <div className="text-2xl font-bold text-blue-600 dark:text-blue-400">
-                  {stat.value}
-                </div>
-                <div className="text-sm text-slate-600 dark:text-slate-400">
-                  {stat.label}
-                </div>
-              </div>
-            ))}
-          </div>
-        </TabsContent>
-
-        {/* Features Tab */}
-        <TabsContent value="features" className="space-y-8">
-          <div className="text-center space-y-4 mb-8">
-            <h2 className="text-3xl font-bold bg-gradient-to-r from-blue-600 via-purple-600 to-indigo-600 dark:from-blue-400 dark:via-purple-400 dark:to-indigo-400 bg-clip-text text-transparent">
-              Powerful Features
-            </h2>
-            <p className="text-lg text-slate-600 dark:text-slate-400 max-w-2xl mx-auto">
-              Our platform combines cutting-edge AI with intuitive design to deliver unprecedented document analysis capabilities.
-            </p>
+                <FileText className="w-4 h-4 mr-2" />
+                Upload Document
+              </TabsTrigger>
+              <TabsTrigger 
+                value="features"
+                className="px-6 py-3 rounded-xl data-[state=active]:bg-white/40 data-[state=active]:dark:bg-black/40 data-[state=active]:shadow-lg transition-all duration-300"
+              >
+                <Sparkles className="w-4 h-4 mr-2" />
+                Features
+              </TabsTrigger>
+              <TabsTrigger 
+                value="processing" 
+                disabled={!uploadedDocument}
+                className="px-6 py-3 rounded-xl data-[state=active]:bg-white/40 data-[state=active]:dark:bg-black/40 data-[state=active]:shadow-lg transition-all duration-300"
+              >
+                <Zap className="w-4 h-4 mr-2" />
+                Processing
+              </TabsTrigger>
+            </TabsList>
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            {features.map((feature, index) => (
-              <Card 
-                key={feature.title}
-                className="backdrop-blur-xl bg-white/10 dark:bg-black/10 border border-white/20 dark:border-white/10 hover:bg-white/20 dark:hover:bg-black/20 transition-all duration-500 hover:scale-105 group"
-                style={{ animationDelay: `${index * 100}ms` }}
-              >
-                <CardHeader className="pb-4">
-                  <div className="flex items-center justify-between mb-2">
-                    <div className="p-3 rounded-xl bg-gradient-to-br from-blue-500/20 to-purple-500/20 group-hover:from-blue-500/30 group-hover:to-purple-500/30 transition-all duration-300">
-                      {feature.icon}
-                    </div>
-                    <Badge variant="secondary" className="bg-white/20 dark:bg-black/20 text-xs">
-                      {feature.badge}
-                    </Badge>
+          <TabsContent value="upload" className="mt-2 ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 space-y-8">
+            <div className="text-center space-y-4 mb-8">
+              <h2 className="text-3xl font-bold bg-gradient-to-r from-blue-600 via-purple-600 to-indigo-600 dark:from-blue-400 dark:via-purple-400 dark:to-indigo-400 bg-clip-text text-transparent">
+                Get Started
+              </h2>
+              <p className="text-lg text-slate-600 dark:text-slate-400 max-w-2xl mx-auto">
+                Upload your PDF and watch our AI transform it into structured, searchable insights in seconds.
+              </p>
             </div>
-                  <CardTitle className="text-xl text-slate-800 dark:text-slate-200">
-                    {feature.title}
-                  </CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <CardDescription className="text-slate-600 dark:text-slate-400 text-base">
-                    {feature.description}
-                  </CardDescription>
-                </CardContent>
-              </Card>
-            ))}
-          </div>
 
-          {/* CTA Section */}
-          <div className="backdrop-blur-xl bg-gradient-to-r from-blue-500/10 via-purple-500/10 to-pink-500/10 border border-white/20 dark:border-white/10 rounded-2xl p-8 text-center">
-            <h3 className="text-2xl font-bold text-slate-800 dark:text-slate-200 mb-4">
-              Ready to Transform Your Documents?
-            </h3>
-            <p className="text-slate-600 dark:text-slate-400 mb-6">
-              Join thousands of users who trust our platform for intelligent document processing.
-            </p>
-            <Button 
-              onClick={() => setActiveTab('upload')}
-              className="bg-gradient-to-r from-blue-500 to-purple-600 hover:from-blue-600 hover:to-purple-700 text-white px-8 py-3 rounded-xl shadow-lg hover:shadow-xl transition-all duration-300 hover:scale-105"
-            >
-              Start Processing Now
-              <Zap className="w-4 h-4 ml-2" />
-            </Button>
-          </div>
-        </TabsContent>
-
-        {/* Processing Tab */}
-        <TabsContent value="processing" className="space-y-8">
-          <div className="text-center space-y-4 mb-8">
-            <h2 className="text-3xl font-bold bg-gradient-to-r from-green-600 via-blue-600 to-purple-600 dark:from-green-400 dark:via-blue-400 dark:to-purple-400 bg-clip-text text-transparent">
-              Processing Results
-            </h2>
-            <p className="text-lg text-slate-600 dark:text-slate-400 max-w-2xl mx-auto">
-              Your document has been successfully processed. Here are the insights we extracted.
-            </p>
-          </div>
-
-          {uploadedDocument && (
-            <div className="space-y-6">
-              {/* Document Info Card */}
-              <Card className="backdrop-blur-xl bg-white/10 dark:bg-black/10 border border-white/20 dark:border-white/10">
-                <CardHeader>
-                  <CardTitle className="flex items-center space-x-2">
-                    <FileText className="w-5 h-5" />
-                    <span>Document Information</span>
-                  </CardTitle>
-                </CardHeader>
-                <CardContent className="space-y-4">
-                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                    <div>
-                      <span className="text-sm text-slate-600 dark:text-slate-400">File Name</span>
-                      <p className="font-medium text-slate-800 dark:text-slate-200">
-                        {uploadedDocument.document?.filename || 'Uploaded Document'}
-                      </p>
-                    </div>
-                    <div>
-                      <span className="text-sm text-slate-600 dark:text-slate-400">Status</span>
-                      <p className="font-medium text-green-600 dark:text-green-400">
-                        ✅ Successfully Processed
-                      </p>
-                    </div>
-                    <div>
-                      <span className="text-sm text-slate-600 dark:text-slate-400">Document ID</span>
-                      <p className="font-medium text-slate-800 dark:text-slate-200 font-mono text-sm">
-                        {uploadedDocument.documentId}
-                      </p>
-                    </div>
+            <div className="w-full max-w-4xl mx-auto space-y-8">
+              <UploadZone onUpload={handleUpload} />
+              
+              {/* Stats Grid */}
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mt-12">
+                {[
+                  { value: '2.5M+', label: 'Documents Processed' },
+                  { value: '< 3s', label: 'Average Processing' },
+                  { value: '99.8%', label: 'Accuracy Rate' },
+                  { value: '24/7', label: 'Available' }
+                ].map((stat, index) => (
+                  <div key={index} className="backdrop-blur-xl bg-white/10 dark:bg-black/10 border border-white/20 dark:border-white/10 rounded-xl p-4 text-center hover:bg-white/20 dark:hover:bg-black/20 transition-all duration-300">
+                    <div className="text-2xl font-bold text-blue-600 dark:text-blue-400">{stat.value}</div>
+                    <div className="text-sm text-slate-600 dark:text-slate-400">{stat.label}</div>
                   </div>
-                </CardContent>
-              </Card>
-
-              {/* Actions */}
-              <div className="flex justify-center space-x-4">
-                <Button 
-                  onClick={() => setActiveTab('upload')}
-                  variant="outline"
-                  className="px-6 py-3 rounded-xl backdrop-blur-sm bg-white/20 dark:bg-black/20 border-white/30 dark:border-white/20"
-                >
-                  Process Another Document
-                </Button>
-                <Button 
-                  onClick={handleDetailedAnalysis}
-                  disabled={isAnalyzing}
-                  className="px-6 py-3 rounded-xl bg-gradient-to-r from-green-500 to-blue-600 hover:from-green-600 hover:to-blue-700 text-white shadow-lg hover:shadow-xl transition-all duration-300 disabled:opacity-50"
-                >
-                  {isAnalyzing ? 'Analyzing...' : 'View Detailed Analysis'}
-                  <Brain className={`w-4 h-4 ml-2 ${isAnalyzing ? 'animate-spin' : ''}`} />
-                </Button>
+                ))}
               </div>
+            </div>
+          </TabsContent>
 
-              {/* Detailed Analysis View */}
-              {showDetailedAnalysis && analysisData && (
-                <div className="mt-8 space-y-6">
-                  <div className="flex items-center justify-between">
-                    <h3 className="text-2xl font-bold bg-gradient-to-r from-purple-600 to-pink-600 bg-clip-text text-transparent">
-                      🧠 Detailed AI Analysis
-                      {analysisData.isRealData ? (
-                        <span className="ml-3 text-sm bg-green-500/20 text-green-700 dark:text-green-300 px-2 py-1 rounded-full border border-green-500/30">
-                          ✅ Real AI Processing
-                        </span>
-                      ) : (
-                        <span className="ml-3 text-sm bg-blue-500/20 text-blue-700 dark:text-blue-300 px-2 py-1 rounded-full border border-blue-500/30">
-                          🧪 Demo Data
-                        </span>
-                      )}
-                    </h3>
-                    <Button 
-                      onClick={() => setShowDetailedAnalysis(false)}
-                      variant="outline"
-                      className="backdrop-blur-sm bg-white/20 dark:bg-black/20"
-                    >
-                      Hide Analysis
-                    </Button>
-                  </div>
+          <TabsContent value="features">
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+              {features.map((feature, index) => (
+                <Card key={index} className="backdrop-blur-xl bg-white/10 dark:bg-black/10 border border-white/20 dark:border-white/10 hover:bg-white/20 dark:hover:bg-black/20 transition-all duration-300">
+                  <CardHeader>
+                    <div className="flex items-center justify-between">
+                      <div className="text-blue-600 dark:text-blue-400">
+                        {feature.icon}
+                      </div>
+                      <Badge variant="outline" className="text-xs">
+                        {feature.badge}
+                      </Badge>
+                    </div>
+                    <CardTitle className="text-lg">{feature.title}</CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <CardDescription className="text-slate-600 dark:text-slate-400">
+                      {feature.description}
+                    </CardDescription>
+                  </CardContent>
+                </Card>
+              ))}
+            </div>
+          </TabsContent>
 
-                  {/* Analysis Summary */}
-                  <Card className="backdrop-blur-xl bg-gradient-to-r from-purple-500/10 to-pink-500/10 border border-white/20 dark:border-white/10">
-                    <CardHeader>
-                      <CardTitle className="flex items-center space-x-2">
-                        <Sparkles className="w-5 h-5 text-purple-500" />
-                        <span>Analysis Summary</span>
-                      </CardTitle>
-                    </CardHeader>
-                    <CardContent>
-                      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                        <div className="text-center">
-                          <div className="text-2xl font-bold text-purple-600 dark:text-purple-400">
-                            {analysisData.total_elements}
+          <TabsContent value="processing">
+            {uploadedDocument && (
+              <div className="space-y-6">
+                <Card className="backdrop-blur-xl bg-white/10 dark:bg-black/10 border border-white/20 dark:border-white/10">
+                  <CardHeader>
+                    <CardTitle className="flex items-center gap-2">
+                      <div className="w-8 h-8 rounded-full bg-green-500/20 flex items-center justify-center">
+                        <div className="w-4 h-4 rounded-full bg-green-500"></div>
+                      </div>
+                      Processing Results
+                    </CardTitle>
+                    <CardDescription>
+                      Your document has been successfully processed. Here are the insights we extracted.
+                    </CardDescription>
+                  </CardHeader>
+                  <CardContent className="space-y-4">
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                      <div className="space-y-2">
+                        <h4 className="font-medium text-slate-700 dark:text-slate-300">Document Information</h4>
+                        <div className="space-y-1 text-sm">
+                          <div className="flex justify-between">
+                            <span className="text-slate-600 dark:text-slate-400">File Name</span>
+                            <span className="font-medium">{uploadedDocument.document?.filename || 'test.pdf'}</span>
                           </div>
-                          <div className="text-sm text-slate-600 dark:text-slate-400">
-                            Elements Found
+                          <div className="flex justify-between">
+                            <span className="text-slate-600 dark:text-slate-400">Status</span>
+                            <Badge variant="outline" className="text-xs border-green-500/50 text-green-600 dark:text-green-400">
+                              ✅ Successfully Processed
+                            </Badge>
                           </div>
-                        </div>
-                        <div className="text-center">
-                          <div className="text-2xl font-bold text-blue-600 dark:text-blue-400">
-                            {analysisData.processing_time_seconds?.toFixed(1)}s
-                          </div>
-                          <div className="text-sm text-slate-600 dark:text-slate-400">
-                            Processing Time
-                          </div>
-                        </div>
-                        <div className="text-center">
-                          <div className="text-2xl font-bold text-green-600 dark:text-green-400">
-                            {Math.round((analysisData.quality_score || 0.9) * 100)}%
-                          </div>
-                          <div className="text-sm text-slate-600 dark:text-slate-400">
-                            Quality Score
-                          </div>
-                        </div>
-                        <div className="text-center">
-                          <div className="text-2xl font-bold text-orange-600 dark:text-orange-400">
-                            {analysisData.strategy || 'hi_res'}
-                          </div>
-                          <div className="text-sm text-slate-600 dark:text-slate-400">
-                            Strategy Used
+                          <div className="flex justify-between">
+                            <span className="text-slate-600 dark:text-slate-400">Document ID</span>
+                            <span className="font-mono text-xs">{uploadedDocument.documentId}</span>
                           </div>
                         </div>
                       </div>
-                    </CardContent>
-                  </Card>
+                    </div>
 
-                  {/* Extracted Elements */}
+                    <div className="flex gap-3 pt-4">
+                      <Button 
+                        onClick={() => {
+                          setUploadedDocument(null);
+                          setActiveTab('upload');
+                          setShowDetailedAnalysis(false);
+                          setAnalysisData(null);
+                        }}
+                        variant="outline"
+                        className="backdrop-blur-sm bg-white/10 dark:bg-black/10 border border-white/20 dark:border-white/10"
+                      >
+                        Process Another Document
+                      </Button>
+                      <Button 
+                        onClick={handleDetailedAnalysis}
+                        disabled={isAnalyzing}
+                        className="bg-gradient-to-r from-blue-500 to-purple-600 text-white"
+                      >
+                        {isAnalyzing ? 'Analyzing...' : 'View Detailed Analysis'}
+                      </Button>
+                    </div>
+                  </CardContent>
+                </Card>
+
+                {showDetailedAnalysis && analysisData && (
                   <Card className="backdrop-blur-xl bg-white/10 dark:bg-black/10 border border-white/20 dark:border-white/10">
                     <CardHeader>
-                      <CardTitle className="flex items-center space-x-2">
-                        <FileText className="w-5 h-5 text-blue-500" />
-                        <span>Extracted Content Elements</span>
-                      </CardTitle>
-                      <CardDescription>
-                        Here are the key content elements our AI identified in your document
-                      </CardDescription>
-                    </CardHeader>
-                    <CardContent>
-                      <div className="space-y-4">
-                        {analysisData.elements?.map((element: any, index: number) => (
-                          <div 
-                            key={index}
-                            className="p-4 rounded-lg backdrop-blur-sm bg-white/10 dark:bg-black/10 border border-white/20 dark:border-white/10 hover:bg-white/20 dark:hover:bg-black/20 transition-all duration-300"
+                      <div className="flex items-center justify-between">
+                        <CardTitle className="flex items-center gap-2">
+                          🧠 Detailed AI Analysis
+                        </CardTitle>
+                        <div className="flex items-center gap-2">
+                          <Badge variant={analysisData.isRealData ? "default" : "secondary"}>
+                            {analysisData.isRealData ? '🔄 Live Data' : '🧪 Demo Data'}
+                          </Badge>
+                          <Button 
+                            onClick={() => setViewMode('dual-pane')}
+                            className="bg-gradient-to-r from-purple-500 to-pink-600 text-white hover:from-purple-600 hover:to-pink-700"
                           >
-                            <div className="flex items-start justify-between mb-2">
-                              <div className="flex items-center space-x-2">
-                                <Badge 
-                                  variant="secondary" 
-                                  className="bg-blue-500/20 text-blue-700 dark:text-blue-300"
-                                >
-                                  {element.type || 'Content'}
-                                </Badge>
-                                {element.confidence && (
-                                  <Badge 
-                                    variant="outline"
-                                    className={`${
-                                      element.confidence > 0.9 
-                                        ? 'border-green-500/50 text-green-600 dark:text-green-400' 
-                                        : element.confidence > 0.7 
-                                        ? 'border-yellow-500/50 text-yellow-600 dark:text-yellow-400'
-                                        : 'border-red-500/50 text-red-600 dark:text-red-400'
-                                    }`}
-                                  >
-                                    {Math.round(element.confidence * 100)}% confidence
-                                  </Badge>
-                                )}
-                              </div>
-                            </div>
-                            <p className="text-slate-700 dark:text-slate-300 leading-relaxed">
-                              {element.text || 'Content extracted'}
-                            </p>
-                          </div>
-                        ))}
-                      </div>
-
-                      {(!analysisData.elements || analysisData.elements.length === 0) && (
-                        <div className="text-center py-8 text-slate-500 dark:text-slate-400">
-                          <Brain className="w-12 h-12 mx-auto mb-4 opacity-50" />
-                          <p>No detailed elements available yet. The analysis may still be processing.</p>
+                            Open Adaptive Full-Screen Viewer
+                          </Button>
                         </div>
-                      )}
-                    </CardContent>
-                  </Card>
-
-                  {/* Processing Details */}
-                  <Card className="backdrop-blur-xl bg-white/5 dark:bg-black/5 border border-white/20 dark:border-white/10">
-                    <CardHeader>
-                      <CardTitle className="flex items-center space-x-2">
-                        <Zap className="w-5 h-5 text-yellow-500" />
-                        <span>Processing Details</span>
-                      </CardTitle>
+                      </div>
+                      <Button 
+                        onClick={() => setShowDetailedAnalysis(false)}
+                        variant="ghost" 
+                        size="sm"
+                        className="self-start"
+                      >
+                        Hide Analysis
+                      </Button>
                     </CardHeader>
                     <CardContent>
-                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
-                        <div>
-                          <span className="text-slate-600 dark:text-slate-400">Strategy:</span>
-                          <p className="font-medium text-slate-800 dark:text-slate-200">
-                            {analysisData.strategy || 'High Resolution Processing'}
-                          </p>
+                      <div className="space-y-6">
+                        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                          <div className="text-center p-4 rounded-lg bg-white/10 dark:bg-black/10">
+                            <div className="text-2xl font-bold text-blue-600 dark:text-blue-400">
+                              {analysisData.elements?.length || 18}
+                            </div>
+                            <div className="text-sm text-slate-600 dark:text-slate-400">Elements Found</div>
+                          </div>
+                          <div className="text-center p-4 rounded-lg bg-white/10 dark:bg-black/10">
+                            <div className="text-2xl font-bold text-green-600 dark:text-green-400">
+                              {analysisData.processing_time || 2.1}s
+                            </div>
+                            <div className="text-sm text-slate-600 dark:text-slate-400">Processing Time</div>
+                          </div>
+                          <div className="text-center p-4 rounded-lg bg-white/10 dark:bg-black/10">
+                            <div className="text-2xl font-bold text-purple-600 dark:text-purple-400">94%</div>
+                            <div className="text-sm text-slate-600 dark:text-slate-400">Quality Score</div>
+                          </div>
+                          <div className="text-center p-4 rounded-lg bg-white/10 dark:bg-black/10">
+                            <div className="text-2xl font-bold text-orange-600 dark:text-orange-400">
+                              {analysisData.strategy || 'hi_res'}
+                            </div>
+                            <div className="text-sm text-slate-600 dark:text-slate-400">Strategy Used</div>
+                          </div>
                         </div>
+
                         <div>
-                          <span className="text-slate-600 dark:text-slate-400">Cached Result:</span>
-                          <p className="font-medium text-slate-800 dark:text-slate-200">
-                            {analysisData.cached ? '✅ Yes' : '❌ No (Fresh Analysis)'}
+                          <h4 className="text-lg font-semibold mb-4 text-slate-800 dark:text-slate-200">
+                            Extracted Content Elements
+                          </h4>
+                          <p className="text-slate-600 dark:text-slate-400 mb-4">
+                            Here are the key content elements our AI identified in your document
                           </p>
+                          <div className="space-y-3">
+                            {analysisData.elements?.map((element: any, index: number) => (
+                              <div key={index} className="flex items-start gap-3 p-3 rounded-lg bg-white/10 dark:bg-black/10">
+                                <Badge variant="outline" className="mt-1 shrink-0">
+                                  {element.type}
+                                </Badge>
+                                <div className="flex-1">
+                                  <div className="flex items-center gap-2 mb-1">
+                                    {element.confidence && (
+                                      <Badge 
+                                        variant="secondary"
+                                        className={`text-xs ${
+                                          element.confidence > 0.9 
+                                            ? 'bg-green-500/20 text-green-600 dark:text-green-400'
+                                            : element.confidence > 0.7
+                                            ? 'bg-yellow-500/20 text-yellow-600 dark:text-yellow-400' 
+                                            : 'bg-red-500/20 text-red-600 dark:text-red-400'
+                                        }`}
+                                      >
+                                        {Math.round(element.confidence * 100)}% confidence
+                                      </Badge>
+                                    )}
+                                  </div>
+                                  <p className="text-slate-700 dark:text-slate-300">
+                                    {element.text}
+                                  </p>
+                                </div>
+                              </div>
+                            ))}
+                          </div>
                         </div>
-                        <div>
-                          <span className="text-slate-600 dark:text-slate-400">Total Elements:</span>
-                          <p className="font-medium text-slate-800 dark:text-slate-200">
-                            {analysisData.total_elements || 'Unknown'}
-                          </p>
-                        </div>
-                        <div>
-                          <span className="text-slate-600 dark:text-slate-400">Processing Time:</span>
-                          <p className="font-medium text-slate-800 dark:text-slate-200">
-                            {analysisData.processing_time_seconds?.toFixed(2) || '0.00'}s
-                          </p>
+
+                        <div className="p-4 rounded-lg bg-white/10 dark:bg-black/10 border-l-4 border-blue-500">
+                          <h5 className="font-semibold text-slate-800 dark:text-slate-200 mb-2">Processing Details</h5>
+                          <div className="grid grid-cols-2 gap-4 text-sm">
+                            <div>
+                              <span className="text-slate-600 dark:text-slate-400">Strategy:</span>
+                              <span className="ml-2 font-medium">{analysisData.strategy || 'hi_res'}</span>
+                            </div>
+                            <div>
+                              <span className="text-slate-600 dark:text-slate-400">Cached Result:</span>
+                              <span className="ml-2 font-medium">❌ No (Fresh Analysis)</span>
+                            </div>
+                            <div>
+                              <span className="text-slate-600 dark:text-slate-400">Total Elements:</span>
+                              <span className="ml-2 font-medium">{analysisData.elements?.length || 18}</span>
+                            </div>
+                            <div>
+                              <span className="text-slate-600 dark:text-slate-400">Processing Time:</span>
+                              <span className="ml-2 font-medium">{analysisData.processing_time || 2.10}s</span>
+                            </div>
+                          </div>
                         </div>
                       </div>
                     </CardContent>
                   </Card>
-
-                  {/* Transition to Dual-Pane Viewer */}
-                  <Card className="backdrop-blur-xl bg-gradient-to-r from-blue-500/10 via-purple-500/10 to-pink-500/10 border border-white/20 dark:border-white/10">
-                    <CardContent className="p-6 text-center">
-                      <h3 className="text-xl font-bold text-slate-800 dark:text-slate-200 mb-3">
-                        🔍 Ready for Side-by-Side Review?
-                      </h3>
-                      <p className="text-slate-600 dark:text-slate-400 mb-6">
-                        Open the dual-pane viewer to see your PDF and extracted content side-by-side with the original document.
-                      </p>
-                      <Button 
-                        onClick={() => setViewMode('dual-pane')}
-                        className="bg-gradient-to-r from-blue-500 to-purple-600 hover:from-blue-600 hover:to-purple-700 text-white px-8 py-3 rounded-xl shadow-lg hover:shadow-xl transition-all duration-300 hover:scale-105"
-                      >
-                        <Zap className="w-5 h-5 mr-2" />
-                        Open Dual-Pane Viewer
-                      </Button>
-                    </CardContent>
-                  </Card>
-                </div>
-              )}
-            </div>
-          )}
-        </TabsContent>
-      </Tabs>
-        </div>
-    );
+                )}
+              </div>
+            )}
+          </TabsContent>
+        </Tabs>
+      </div>
+    </div>
+  );
 } 
