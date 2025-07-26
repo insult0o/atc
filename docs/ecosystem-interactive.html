@@ -155,47 +155,233 @@
 
         <div id="workflows" class="tab-content">
             <div class="space-y-8">
+                <!-- Main Workflow Diagram -->
+                <div class="bg-white rounded-lg shadow-lg p-8 mb-8">
+                    <h2 class="text-2xl font-bold mb-6">Complete User Workflow</h2>
+                    <div class="mermaid">
+flowchart TB
+    Start([User Starts]) --> ChooseAction{Choose Action}
+    
+    ChooseAction -->|New Document| Upload[Upload PDF]
+    ChooseAction -->|Existing Document| SelectDoc[Select Document]
+    
+    Upload --> Validate{Valid PDF?}
+    Validate -->|No| Error[Show Error]
+    Validate -->|Yes| Process[Process PDF]
+    
+    Process --> MultiTool{Multi-Tool Processing}
+    MultiTool --> Tool1[Unstructured.io]
+    MultiTool --> Tool2[PDFPlumber]
+    MultiTool --> Tool3[PyMuPDF]
+    MultiTool --> Tool4[Camelot]
+    MultiTool --> Tool5[Tabula]
+    
+    Tool1 & Tool2 & Tool3 & Tool4 & Tool5 --> Aggregate[Aggregate Results]
+    
+    Aggregate --> DetectZones[Detect Zones]
+    DetectZones --> ClassifyZones{Classify Zones}
+    
+    ClassifyZones --> TextZone[Text Zones]
+    ClassifyZones --> TableZone[Table Zones]
+    ClassifyZones --> ImageZone[Image Zones]
+    ClassifyZones --> DiagramZone[Diagram Zones]
+    
+    TextZone & TableZone & ImageZone & DiagramZone --> StoreZones[Store in Database]
+    
+    StoreZones --> OpenViewer[Open Dual-Pane Viewer]
+    SelectDoc --> OpenViewer
+    
+    OpenViewer --> ViewerActions{Viewer Actions}
+    
+    ViewerActions -->|Navigate| PageNav[Page Navigation]
+    ViewerActions -->|Zoom| ZoomControl[Zoom In/Out]
+    ViewerActions -->|Select| ZoneSelect[Select Zones]
+    ViewerActions -->|Edit| ContentEdit[Edit Content]
+    
+    ZoneSelect --> ZoneActions{Zone Actions}
+    ZoneActions -->|Highlight| Highlight[Highlight Zone]
+    ZoneActions -->|Edit| EditZone[Edit Zone]
+    ZoneActions -->|Merge| MergeZones[Merge Zones]
+    ZoneActions -->|Split| SplitZone[Split Zone]
+    ZoneActions -->|Delete| DeleteZone[Delete Zone]
+    
+    ContentEdit --> EditorFeatures{Editor Features}
+    EditorFeatures -->|Text| TextEdit[Text Editing]
+    EditorFeatures -->|Format| Formatting[Rich Formatting]
+    EditorFeatures -->|Save| AutoSave[Auto-Save]
+    
+    ViewerActions -->|Export| ExportFlow[Export System]
+    
+    ExportFlow --> SelectZones[Select Zones to Export]
+    SelectZones --> ChooseFormat{Choose Format}
+    
+    ChooseFormat -->|RAG| ConfigRAG[Configure RAG]
+    ChooseFormat -->|JSONL| ConfigJSONL[Configure JSONL]
+    ChooseFormat -->|Corrections| ConfigCorrections[Configure Corrections]
+    
+    ConfigRAG --> RAGOptions[Set Chunk Size, Overlap, Tokens]
+    ConfigJSONL --> JSONLOptions[Set Structure, Metadata]
+    ConfigCorrections --> CorrOptions[Set Correction Types]
+    
+    RAGOptions & JSONLOptions & CorrOptions --> Validate2{Validate Export}
+    
+    Validate2 -->|Invalid| ShowWarnings[Show Warnings]
+    Validate2 -->|Valid| GenerateExport[Generate Export]
+    
+    ShowWarnings --> FixIssues[Fix Issues]
+    FixIssues --> Validate2
+    
+    GenerateExport --> Progress[Show Progress]
+    Progress --> Download[Download File]
+    
+    Download --> End([Complete])
+                    </div>
+                </div>
+
                 <!-- Workflow Cards -->
                 <div class="workflow-card bg-white rounded-lg shadow-lg p-6">
                     <h3 class="text-xl font-bold mb-4 text-blue-600">🚀 Quick Extract Workflow</h3>
-                    <div class="mermaid">
-                        graph LR
-                            A[Upload PDF] --> B[Auto-process]
-                            B --> C[View Results]
-                            C --> D[Quick Export]
-                            style A fill:#e0e7ff
-                            style D fill:#dcfce7
+                    <div class="flex items-center justify-center space-x-4 mb-4">
+                        <div class="bg-blue-100 p-4 rounded-lg">
+                            <div class="text-2xl mb-2">📤</div>
+                            <div class="text-sm">Upload PDF</div>
+                        </div>
+                        <div class="text-gray-400">→</div>
+                        <div class="bg-blue-100 p-4 rounded-lg">
+                            <div class="text-2xl mb-2">⚙️</div>
+                            <div class="text-sm">Auto-process</div>
+                        </div>
+                        <div class="text-gray-400">→</div>
+                        <div class="bg-blue-100 p-4 rounded-lg">
+                            <div class="text-2xl mb-2">👁️</div>
+                            <div class="text-sm">View Results</div>
+                        </div>
+                        <div class="text-gray-400">→</div>
+                        <div class="bg-green-100 p-4 rounded-lg">
+                            <div class="text-2xl mb-2">📥</div>
+                            <div class="text-sm">Quick Export</div>
+                        </div>
                     </div>
-                    <p class="text-gray-600 mt-4">Time: ~2-3 minutes | Best for: Quick data extraction</p>
+                    <p class="text-gray-600">Time: ~2-3 minutes | Best for: Quick data extraction</p>
                 </div>
 
                 <div class="workflow-card bg-white rounded-lg shadow-lg p-6">
                     <h3 class="text-xl font-bold mb-4 text-green-600">🔍 Detailed Review Workflow</h3>
-                    <div class="mermaid">
-                        graph LR
-                            A[Upload] --> B[Process]
-                            B --> C[Review Zones]
-                            C --> D[Edit Content]
-                            D --> E[Validate]
-                            E --> F[Export]
-                            style A fill:#e0e7ff
-                            style F fill:#dcfce7
+                    <div class="flex items-center justify-center space-x-4 mb-4 flex-wrap">
+                        <div class="bg-green-100 p-4 rounded-lg">
+                            <div class="text-2xl mb-2">📤</div>
+                            <div class="text-sm">Upload</div>
+                        </div>
+                        <div class="text-gray-400">→</div>
+                        <div class="bg-green-100 p-4 rounded-lg">
+                            <div class="text-2xl mb-2">⚙️</div>
+                            <div class="text-sm">Process</div>
+                        </div>
+                        <div class="text-gray-400">→</div>
+                        <div class="bg-green-100 p-4 rounded-lg">
+                            <div class="text-2xl mb-2">🔍</div>
+                            <div class="text-sm">Review Zones</div>
+                        </div>
+                        <div class="text-gray-400">→</div>
+                        <div class="bg-green-100 p-4 rounded-lg">
+                            <div class="text-2xl mb-2">✏️</div>
+                            <div class="text-sm">Edit Content</div>
+                        </div>
+                        <div class="text-gray-400">→</div>
+                        <div class="bg-green-100 p-4 rounded-lg">
+                            <div class="text-2xl mb-2">✅</div>
+                            <div class="text-sm">Validate</div>
+                        </div>
+                        <div class="text-gray-400">→</div>
+                        <div class="bg-green-100 p-4 rounded-lg">
+                            <div class="text-2xl mb-2">📥</div>
+                            <div class="text-sm">Export</div>
+                        </div>
                     </div>
-                    <p class="text-gray-600 mt-4">Time: ~10-15 minutes | Best for: High-accuracy requirements</p>
+                    <p class="text-gray-600">Time: ~10-15 minutes | Best for: High-accuracy requirements</p>
                 </div>
 
                 <div class="workflow-card bg-white rounded-lg shadow-lg p-6">
                     <h3 class="text-xl font-bold mb-4 text-purple-600">👥 Collaborative Workflow</h3>
-                    <div class="mermaid">
-                        graph LR
-                            A[Upload] --> B[Share Link]
-                            B --> C[Multi-user Edit]
-                            C --> D[Review Changes]
-                            D --> E[Export]
-                            style A fill:#e0e7ff
-                            style E fill:#dcfce7
+                    <div class="flex items-center justify-center space-x-4 mb-4">
+                        <div class="bg-purple-100 p-4 rounded-lg">
+                            <div class="text-2xl mb-2">📤</div>
+                            <div class="text-sm">Upload</div>
+                        </div>
+                        <div class="text-gray-400">→</div>
+                        <div class="bg-purple-100 p-4 rounded-lg">
+                            <div class="text-2xl mb-2">🔗</div>
+                            <div class="text-sm">Share Link</div>
+                        </div>
+                        <div class="text-gray-400">→</div>
+                        <div class="bg-purple-100 p-4 rounded-lg">
+                            <div class="text-2xl mb-2">👥</div>
+                            <div class="text-sm">Multi-user Edit</div>
+                        </div>
+                        <div class="text-gray-400">→</div>
+                        <div class="bg-purple-100 p-4 rounded-lg">
+                            <div class="text-2xl mb-2">🔍</div>
+                            <div class="text-sm">Review Changes</div>
+                        </div>
+                        <div class="text-gray-400">→</div>
+                        <div class="bg-purple-100 p-4 rounded-lg">
+                            <div class="text-2xl mb-2">📥</div>
+                            <div class="text-sm">Export</div>
+                        </div>
                     </div>
-                    <p class="text-gray-600 mt-4">Time: Variable | Best for: Team projects</p>
+                    <p class="text-gray-600">Time: Variable | Best for: Team projects</p>
+                </div>
+
+                <div class="workflow-card bg-white rounded-lg shadow-lg p-6">
+                    <h3 class="text-xl font-bold mb-4 text-orange-600">📦 Batch Processing Workflow</h3>
+                    <div class="flex items-center justify-center space-x-4 mb-4">
+                        <div class="bg-orange-100 p-4 rounded-lg">
+                            <div class="text-2xl mb-2">📂</div>
+                            <div class="text-sm">Multi-upload</div>
+                        </div>
+                        <div class="text-gray-400">→</div>
+                        <div class="bg-orange-100 p-4 rounded-lg">
+                            <div class="text-2xl mb-2">⏳</div>
+                            <div class="text-sm">Queue Process</div>
+                        </div>
+                        <div class="text-gray-400">→</div>
+                        <div class="bg-orange-100 p-4 rounded-lg">
+                            <div class="text-2xl mb-2">📊</div>
+                            <div class="text-sm">Bulk Review</div>
+                        </div>
+                        <div class="text-gray-400">→</div>
+                        <div class="bg-orange-100 p-4 rounded-lg">
+                            <div class="text-2xl mb-2">📥</div>
+                            <div class="text-sm">Mass Export</div>
+                        </div>
+                    </div>
+                    <p class="text-gray-600">Time: ~5 minutes per document | Best for: Large document sets</p>
+                </div>
+
+                <div class="workflow-card bg-white rounded-lg shadow-lg p-6">
+                    <h3 class="text-xl font-bold mb-4 text-red-600">🔌 API Integration Workflow</h3>
+                    <div class="flex items-center justify-center space-x-4 mb-4">
+                        <div class="bg-red-100 p-4 rounded-lg">
+                            <div class="text-2xl mb-2">🔌</div>
+                            <div class="text-sm">API Upload</div>
+                        </div>
+                        <div class="text-gray-400">→</div>
+                        <div class="bg-red-100 p-4 rounded-lg">
+                            <div class="text-2xl mb-2">🔔</div>
+                            <div class="text-sm">Webhook</div>
+                        </div>
+                        <div class="text-gray-400">→</div>
+                        <div class="bg-red-100 p-4 rounded-lg">
+                            <div class="text-2xl mb-2">🤖</div>
+                            <div class="text-sm">Auto-process</div>
+                        </div>
+                        <div class="text-gray-400">→</div>
+                        <div class="bg-red-100 p-4 rounded-lg">
+                            <div class="text-2xl mb-2">📡</div>
+                            <div class="text-sm">API Response</div>
+                        </div>
+                    </div>
+                    <p class="text-gray-600">Time: ~1-2 minutes | Best for: Automated pipelines</p>
                 </div>
             </div>
         </div>
@@ -486,9 +672,26 @@
             event.target.classList.remove('border-transparent');
             event.target.classList.add('border-blue-500', 'text-blue-600', 'font-semibold');
             
-            // Re-render Mermaid diagrams
-            mermaid.init();
+            // Re-render Mermaid diagrams in the newly visible tab
+            setTimeout(() => {
+                const activeTab = document.getElementById(tabName);
+                const diagrams = activeTab.querySelectorAll('.mermaid');
+                diagrams.forEach(diagram => {
+                    if (diagram.getAttribute('data-processed') === 'true') {
+                        diagram.removeAttribute('data-processed');
+                        diagram.innerHTML = diagram.getAttribute('data-mermaid') || diagram.textContent;
+                    }
+                });
+                mermaid.init(undefined, activeTab.querySelectorAll('.mermaid'));
+            }, 100);
         }
+
+        // Store original mermaid content
+        document.addEventListener('DOMContentLoaded', () => {
+            document.querySelectorAll('.mermaid').forEach(diagram => {
+                diagram.setAttribute('data-mermaid', diagram.textContent);
+            });
+        });
     </script>
 </body>
 </html>

@@ -3,7 +3,8 @@ Configuration settings for the PDF Intelligence Platform API
 Uses Pydantic for validation and environment variable loading
 """
 
-from pydantic import BaseSettings, Field, validator
+from pydantic import Field, validator
+from pydantic_settings import BaseSettings
 from typing import List, Optional
 import os
 from functools import lru_cache
@@ -15,7 +16,7 @@ class Settings(BaseSettings):
     environment: str = Field(default="development", env="ENVIRONMENT")
     
     # Security
-    secret_key: str = Field(..., env="SECRET_KEY")
+    secret_key: str = Field(default="development-secret-key-not-for-production", env="SECRET_KEY")
     allowed_hosts: List[str] = Field(
         default=["localhost", "127.0.0.1"], 
         env="ALLOWED_HOSTS"
@@ -26,14 +27,14 @@ class Settings(BaseSettings):
     )
     
     # Database
-    database_url: str = Field(..., env="DATABASE_URL")
+    database_url: str = Field(default="sqlite:///:memory:", env="DATABASE_URL")
     database_pool_size: int = Field(default=20, env="DATABASE_POOL_SIZE")
     database_max_overflow: int = Field(default=0, env="DATABASE_MAX_OVERFLOW")
     
     # Supabase
-    supabase_url: str = Field(..., env="SUPABASE_URL")
-    supabase_key: str = Field(..., env="SUPABASE_ANON_KEY")
-    supabase_service_key: str = Field(..., env="SUPABASE_SERVICE_KEY")
+    supabase_url: str = Field(default="https://dummy.supabase.co", env="SUPABASE_URL")
+    supabase_key: str = Field(default="dummy-anon-key", env="SUPABASE_ANON_KEY")
+    supabase_service_key: str = Field(default="dummy-service-key", env="SUPABASE_SERVICE_KEY")
     
     # Redis
     redis_url: str = Field(default="redis://localhost:6379", env="REDIS_URL")

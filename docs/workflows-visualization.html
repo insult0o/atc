@@ -1,0 +1,339 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>PDF Platform - User Workflows</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        .workflow-step {
+            transition: all 0.3s ease;
+        }
+        .workflow-step:hover {
+            transform: scale(1.05);
+        }
+        .arrow {
+            font-size: 24px;
+            color: #9ca3af;
+        }
+        .workflow-container {
+            background: linear-gradient(to right, #f3f4f6, #ffffff, #f3f4f6);
+        }
+    </style>
+</head>
+<body class="bg-gray-50">
+    <div class="container mx-auto px-4 py-8 max-w-7xl">
+        <header class="text-center mb-12">
+            <h1 class="text-4xl font-bold text-gray-900 mb-4">PDF Intelligence Platform - User Workflows</h1>
+            <p class="text-xl text-gray-600">All possible user journeys through the platform</p>
+        </header>
+
+        <!-- Complete User Journey -->
+        <div class="bg-white rounded-lg shadow-xl p-8 mb-12">
+            <h2 class="text-3xl font-bold mb-8 text-center">Complete User Journey Map</h2>
+            
+            <div class="overflow-x-auto">
+                <svg viewBox="0 0 1200 800" class="w-full">
+                    <!-- Start -->
+                    <rect x="50" y="50" width="120" height="60" rx="30" fill="#3b82f6" />
+                    <text x="110" y="85" text-anchor="middle" fill="white" font-weight="bold">Start</text>
+                    
+                    <!-- Choice -->
+                    <polygon points="110,150 170,200 110,250 50,200" fill="#f59e0b" />
+                    <text x="110" y="205" text-anchor="middle" fill="white" font-size="12">New/Existing?</text>
+                    
+                    <!-- Upload Path -->
+                    <rect x="250" y="120" width="120" height="60" rx="10" fill="#10b981" />
+                    <text x="310" y="155" text-anchor="middle" fill="white">Upload PDF</text>
+                    
+                    <!-- Processing -->
+                    <rect x="450" y="120" width="150" height="60" rx="10" fill="#8b5cf6" />
+                    <text x="525" y="155" text-anchor="middle" fill="white">Multi-Tool Process</text>
+                    
+                    <!-- Zone Detection -->
+                    <rect x="680" y="120" width="120" height="60" rx="10" fill="#ef4444" />
+                    <text x="740" y="155" text-anchor="middle" fill="white">Zone Detection</text>
+                    
+                    <!-- Viewer -->
+                    <rect x="450" y="300" width="150" height="60" rx="10" fill="#3b82f6" />
+                    <text x="525" y="335" text-anchor="middle" fill="white">Dual-Pane Viewer</text>
+                    
+                    <!-- Actions -->
+                    <rect x="250" y="450" width="100" height="50" rx="10" fill="#10b981" />
+                    <text x="300" y="480" text-anchor="middle" fill="white" font-size="12">Navigate</text>
+                    
+                    <rect x="380" y="450" width="100" height="50" rx="10" fill="#10b981" />
+                    <text x="430" y="480" text-anchor="middle" fill="white" font-size="12">Edit</text>
+                    
+                    <rect x="510" y="450" width="100" height="50" rx="10" fill="#10b981" />
+                    <text x="560" y="480" text-anchor="middle" fill="white" font-size="12">Select</text>
+                    
+                    <rect x="640" y="450" width="100" height="50" rx="10" fill="#f59e0b" />
+                    <text x="690" y="480" text-anchor="middle" fill="white" font-size="12">Export</text>
+                    
+                    <!-- Export Flow -->
+                    <rect x="850" y="450" width="120" height="50" rx="10" fill="#ef4444" />
+                    <text x="910" y="480" text-anchor="middle" fill="white" font-size="12">Configure</text>
+                    
+                    <rect x="850" y="550" width="120" height="50" rx="10" fill="#8b5cf6" />
+                    <text x="910" y="580" text-anchor="middle" fill="white" font-size="12">Validate</text>
+                    
+                    <rect x="850" y="650" width="120" height="50" rx="10" fill="#10b981" />
+                    <text x="910" y="680" text-anchor="middle" fill="white" font-size="12">Download</text>
+                    
+                    <!-- Arrows -->
+                    <line x1="110" y1="110" x2="110" y2="150" stroke="#6b7280" stroke-width="2" marker-end="url(#arrowhead)" />
+                    <line x1="170" y1="200" x2="250" y2="150" stroke="#6b7280" stroke-width="2" marker-end="url(#arrowhead)" />
+                    <line x1="370" y1="150" x2="450" y2="150" stroke="#6b7280" stroke-width="2" marker-end="url(#arrowhead)" />
+                    <line x1="600" y1="150" x2="680" y2="150" stroke="#6b7280" stroke-width="2" marker-end="url(#arrowhead)" />
+                    <line x1="740" y1="180" x2="525" y2="300" stroke="#6b7280" stroke-width="2" marker-end="url(#arrowhead)" />
+                    <line x1="525" y1="360" x2="300" y2="450" stroke="#6b7280" stroke-width="2" marker-end="url(#arrowhead)" />
+                    <line x1="525" y1="360" x2="430" y2="450" stroke="#6b7280" stroke-width="2" marker-end="url(#arrowhead)" />
+                    <line x1="525" y1="360" x2="560" y2="450" stroke="#6b7280" stroke-width="2" marker-end="url(#arrowhead)" />
+                    <line x1="525" y1="360" x2="690" y2="450" stroke="#6b7280" stroke-width="2" marker-end="url(#arrowhead)" />
+                    <line x1="740" y1="475" x2="850" y2="475" stroke="#6b7280" stroke-width="2" marker-end="url(#arrowhead)" />
+                    <line x1="910" y1="500" x2="910" y2="550" stroke="#6b7280" stroke-width="2" marker-end="url(#arrowhead)" />
+                    <line x1="910" y1="600" x2="910" y2="650" stroke="#6b7280" stroke-width="2" marker-end="url(#arrowhead)" />
+                    
+                    <!-- Arrow marker -->
+                    <defs>
+                        <marker id="arrowhead" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto">
+                            <polygon points="0 0, 10 3.5, 0 7" fill="#6b7280" />
+                        </marker>
+                    </defs>
+                </svg>
+            </div>
+        </div>
+
+        <!-- Individual Workflows -->
+        <div class="space-y-8">
+            <!-- Quick Extract -->
+            <div class="workflow-container rounded-lg shadow-lg p-8">
+                <h3 class="text-2xl font-bold mb-6 text-blue-600">🚀 Quick Extract Workflow</h3>
+                <div class="flex items-center justify-center space-x-4 flex-wrap">
+                    <div class="workflow-step bg-blue-100 p-6 rounded-lg text-center">
+                        <div class="text-4xl mb-2">📤</div>
+                        <div class="font-semibold">Upload PDF</div>
+                        <div class="text-sm text-gray-600 mt-1">Drag & drop or browse</div>
+                    </div>
+                    <div class="arrow">→</div>
+                    <div class="workflow-step bg-blue-100 p-6 rounded-lg text-center">
+                        <div class="text-4xl mb-2">⚙️</div>
+                        <div class="font-semibold">Auto-process</div>
+                        <div class="text-sm text-gray-600 mt-1">5 tools analyze PDF</div>
+                    </div>
+                    <div class="arrow">→</div>
+                    <div class="workflow-step bg-blue-100 p-6 rounded-lg text-center">
+                        <div class="text-4xl mb-2">👁️</div>
+                        <div class="font-semibold">View Results</div>
+                        <div class="text-sm text-gray-600 mt-1">Zones auto-detected</div>
+                    </div>
+                    <div class="arrow">→</div>
+                    <div class="workflow-step bg-green-100 p-6 rounded-lg text-center">
+                        <div class="text-4xl mb-2">📥</div>
+                        <div class="font-semibold">Quick Export</div>
+                        <div class="text-sm text-gray-600 mt-1">RAG chunks ready</div>
+                    </div>
+                </div>
+                <div class="mt-6 text-center">
+                    <span class="bg-blue-500 text-white px-4 py-2 rounded-full text-sm">⏱️ 2-3 minutes</span>
+                    <span class="ml-4 text-gray-600">Best for: Quick data extraction, LLM preparation</span>
+                </div>
+            </div>
+
+            <!-- Detailed Review -->
+            <div class="workflow-container rounded-lg shadow-lg p-8">
+                <h3 class="text-2xl font-bold mb-6 text-green-600">🔍 Detailed Review Workflow</h3>
+                <div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
+                    <div class="workflow-step bg-green-100 p-4 rounded-lg text-center">
+                        <div class="text-3xl mb-1">📤</div>
+                        <div class="font-semibold text-sm">Upload</div>
+                    </div>
+                    <div class="workflow-step bg-green-100 p-4 rounded-lg text-center">
+                        <div class="text-3xl mb-1">⚙️</div>
+                        <div class="font-semibold text-sm">Process</div>
+                    </div>
+                    <div class="workflow-step bg-green-100 p-4 rounded-lg text-center">
+                        <div class="text-3xl mb-1">🔍</div>
+                        <div class="font-semibold text-sm">Review</div>
+                    </div>
+                    <div class="workflow-step bg-green-100 p-4 rounded-lg text-center">
+                        <div class="text-3xl mb-1">✏️</div>
+                        <div class="font-semibold text-sm">Edit</div>
+                    </div>
+                    <div class="workflow-step bg-green-100 p-4 rounded-lg text-center">
+                        <div class="text-3xl mb-1">✅</div>
+                        <div class="font-semibold text-sm">Validate</div>
+                    </div>
+                    <div class="workflow-step bg-green-100 p-4 rounded-lg text-center">
+                        <div class="text-3xl mb-1">📥</div>
+                        <div class="font-semibold text-sm">Export</div>
+                    </div>
+                </div>
+                <div class="mt-6 text-center">
+                    <span class="bg-green-500 text-white px-4 py-2 rounded-full text-sm">⏱️ 10-15 minutes</span>
+                    <span class="ml-4 text-gray-600">Best for: High-accuracy requirements, manual verification</span>
+                </div>
+            </div>
+
+            <!-- Collaborative -->
+            <div class="workflow-container rounded-lg shadow-lg p-8">
+                <h3 class="text-2xl font-bold mb-6 text-purple-600">👥 Collaborative Workflow</h3>
+                <div class="flex items-center justify-center space-x-4 flex-wrap">
+                    <div class="workflow-step bg-purple-100 p-6 rounded-lg text-center">
+                        <div class="text-4xl mb-2">📤</div>
+                        <div class="font-semibold">Upload</div>
+                    </div>
+                    <div class="arrow">→</div>
+                    <div class="workflow-step bg-purple-100 p-6 rounded-lg text-center">
+                        <div class="text-4xl mb-2">🔗</div>
+                        <div class="font-semibold">Share Link</div>
+                    </div>
+                    <div class="arrow">→</div>
+                    <div class="workflow-step bg-purple-100 p-6 rounded-lg text-center">
+                        <div class="text-4xl mb-2">👥</div>
+                        <div class="font-semibold">Multi-user Edit</div>
+                    </div>
+                    <div class="arrow">→</div>
+                    <div class="workflow-step bg-purple-100 p-6 rounded-lg text-center">
+                        <div class="text-4xl mb-2">🔍</div>
+                        <div class="font-semibold">Review Changes</div>
+                    </div>
+                    <div class="arrow">→</div>
+                    <div class="workflow-step bg-purple-100 p-6 rounded-lg text-center">
+                        <div class="text-4xl mb-2">📥</div>
+                        <div class="font-semibold">Export</div>
+                    </div>
+                </div>
+                <div class="mt-6 text-center">
+                    <span class="bg-purple-500 text-white px-4 py-2 rounded-full text-sm">⏱️ Variable</span>
+                    <span class="ml-4 text-gray-600">Best for: Team projects, peer review</span>
+                </div>
+            </div>
+
+            <!-- Batch Processing -->
+            <div class="workflow-container rounded-lg shadow-lg p-8">
+                <h3 class="text-2xl font-bold mb-6 text-orange-600">📦 Batch Processing Workflow</h3>
+                <div class="flex items-center justify-center space-x-4 flex-wrap">
+                    <div class="workflow-step bg-orange-100 p-6 rounded-lg text-center">
+                        <div class="text-4xl mb-2">📂</div>
+                        <div class="font-semibold">Multi-upload</div>
+                        <div class="text-sm text-gray-600 mt-1">10+ PDFs</div>
+                    </div>
+                    <div class="arrow">→</div>
+                    <div class="workflow-step bg-orange-100 p-6 rounded-lg text-center">
+                        <div class="text-4xl mb-2">⏳</div>
+                        <div class="font-semibold">Queue Process</div>
+                        <div class="text-sm text-gray-600 mt-1">Background jobs</div>
+                    </div>
+                    <div class="arrow">→</div>
+                    <div class="workflow-step bg-orange-100 p-6 rounded-lg text-center">
+                        <div class="text-4xl mb-2">📊</div>
+                        <div class="font-semibold">Bulk Review</div>
+                        <div class="text-sm text-gray-600 mt-1">Summary view</div>
+                    </div>
+                    <div class="arrow">→</div>
+                    <div class="workflow-step bg-orange-100 p-6 rounded-lg text-center">
+                        <div class="text-4xl mb-2">📥</div>
+                        <div class="font-semibold">Mass Export</div>
+                        <div class="text-sm text-gray-600 mt-1">Zip download</div>
+                    </div>
+                </div>
+                <div class="mt-6 text-center">
+                    <span class="bg-orange-500 text-white px-4 py-2 rounded-full text-sm">⏱️ 5 min/doc</span>
+                    <span class="ml-4 text-gray-600">Best for: Large document sets, automation</span>
+                </div>
+            </div>
+
+            <!-- API Integration -->
+            <div class="workflow-container rounded-lg shadow-lg p-8">
+                <h3 class="text-2xl font-bold mb-6 text-red-600">🔌 API Integration Workflow</h3>
+                <div class="flex items-center justify-center space-x-4 flex-wrap">
+                    <div class="workflow-step bg-red-100 p-6 rounded-lg text-center">
+                        <div class="text-4xl mb-2">🔌</div>
+                        <div class="font-semibold">API Upload</div>
+                        <div class="text-sm text-gray-600 mt-1">POST /api/upload</div>
+                    </div>
+                    <div class="arrow">→</div>
+                    <div class="workflow-step bg-red-100 p-6 rounded-lg text-center">
+                        <div class="text-4xl mb-2">🔔</div>
+                        <div class="font-semibold">Webhook</div>
+                        <div class="text-sm text-gray-600 mt-1">Processing status</div>
+                    </div>
+                    <div class="arrow">→</div>
+                    <div class="workflow-step bg-red-100 p-6 rounded-lg text-center">
+                        <div class="text-4xl mb-2">🤖</div>
+                        <div class="font-semibold">Auto-process</div>
+                        <div class="text-sm text-gray-600 mt-1">No UI needed</div>
+                    </div>
+                    <div class="arrow">→</div>
+                    <div class="workflow-step bg-red-100 p-6 rounded-lg text-center">
+                        <div class="text-4xl mb-2">📡</div>
+                        <div class="font-semibold">API Response</div>
+                        <div class="text-sm text-gray-600 mt-1">JSON results</div>
+                    </div>
+                </div>
+                <div class="mt-6 text-center">
+                    <span class="bg-red-500 text-white px-4 py-2 rounded-full text-sm">⏱️ 1-2 minutes</span>
+                    <span class="ml-4 text-gray-600">Best for: Automated pipelines, system integration</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- Workflow Comparison -->
+        <div class="mt-12 bg-white rounded-lg shadow-lg p-8">
+            <h3 class="text-2xl font-bold mb-6">Workflow Comparison</h3>
+            <div class="overflow-x-auto">
+                <table class="w-full">
+                    <thead>
+                        <tr class="border-b-2 border-gray-200">
+                            <th class="text-left py-3 px-4">Workflow</th>
+                            <th class="text-center py-3 px-4">Time</th>
+                            <th class="text-center py-3 px-4">User Interaction</th>
+                            <th class="text-center py-3 px-4">Accuracy</th>
+                            <th class="text-left py-3 px-4">Best Use Case</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr class="border-b border-gray-100">
+                            <td class="py-3 px-4 font-semibold text-blue-600">🚀 Quick Extract</td>
+                            <td class="text-center py-3 px-4">2-3 min</td>
+                            <td class="text-center py-3 px-4">Minimal</td>
+                            <td class="text-center py-3 px-4">85-90%</td>
+                            <td class="py-3 px-4">Quick insights, LLM prep</td>
+                        </tr>
+                        <tr class="border-b border-gray-100">
+                            <td class="py-3 px-4 font-semibold text-green-600">🔍 Detailed Review</td>
+                            <td class="text-center py-3 px-4">10-15 min</td>
+                            <td class="text-center py-3 px-4">High</td>
+                            <td class="text-center py-3 px-4">95-99%</td>
+                            <td class="py-3 px-4">Critical documents</td>
+                        </tr>
+                        <tr class="border-b border-gray-100">
+                            <td class="py-3 px-4 font-semibold text-purple-600">👥 Collaborative</td>
+                            <td class="text-center py-3 px-4">Variable</td>
+                            <td class="text-center py-3 px-4">Multiple users</td>
+                            <td class="text-center py-3 px-4">95-99%</td>
+                            <td class="py-3 px-4">Team projects</td>
+                        </tr>
+                        <tr class="border-b border-gray-100">
+                            <td class="py-3 px-4 font-semibold text-orange-600">📦 Batch Processing</td>
+                            <td class="text-center py-3 px-4">5 min/doc</td>
+                            <td class="text-center py-3 px-4">Low</td>
+                            <td class="text-center py-3 px-4">85-90%</td>
+                            <td class="py-3 px-4">Large volumes</td>
+                        </tr>
+                        <tr>
+                            <td class="py-3 px-4 font-semibold text-red-600">🔌 API Integration</td>
+                            <td class="text-center py-3 px-4">1-2 min</td>
+                            <td class="text-center py-3 px-4">None</td>
+                            <td class="text-center py-3 px-4">85-90%</td>
+                            <td class="py-3 px-4">Automation</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</body>
+</html>

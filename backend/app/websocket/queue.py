@@ -298,6 +298,31 @@ class MessageQueue:
             
             self.logger.warning(f"Message {message_id} permanently failed after {message.retry_count} retries")
     
+    async def process_queue(self, delivery_callback: Callable[[QueuedMessage], bool]) -> None:
+        """Process pending messages with the given delivery callback"""
+        try:
+            batch = await self.get_next_batch()
+            
+            for message in batch:
+                try:
+                    # Mark as attempted
+                    message.last_attempt = datetime.utcnow()
+                    
+                    # Try to deliver the message
+                    success = await delivery_callback(message)
+                    
+                    if success:
+                        await self.mark_delivered(message.id)
+                    else:
+                        await self.mark_failed(message.id, "Delivery callback returned False")
+                        
+                except Exception as e:
+                    await self.mark_failed(message.id, str(e))
+                    self.logger.error(f"Error delivering message {message.id}: {e}")
+                    
+        except Exception as e:
+            self.logger.error(f"Error processing message queue: {e}")
+    
     async def get_queue_stats(self) -> Dict[str, Any]:
         """Get queue statistics"""
         return {

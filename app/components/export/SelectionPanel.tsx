@@ -1,5 +1,5 @@
 import React, { useState, useCallback, useMemo } from 'react';
-import { Zone } from '../../../lib/types/zone';
+import type { Zone } from '@pdf-platform/shared';
 
 interface SelectionPanelProps {
   zones: Zone[];
@@ -47,7 +47,7 @@ export const SelectionPanel: React.FC<SelectionPanelProps> = ({
   const zonesByPage = useMemo(() => {
     const grouped = new Map<number, Zone[]>();
     zones.forEach(zone => {
-      const page = zone.pageNumber || 0;
+      const page = zone.page || 1;
       if (!grouped.has(page)) {
         grouped.set(page, []);
       }

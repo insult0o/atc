@@ -15,15 +15,18 @@ class BaseModel(PydanticBaseModel):
         from_attributes=True,
         use_enum_values=True,
         validate_assignment=True,
-        arbitrary_types_allowed=True
+        arbitrary_types_allowed=True,
+        json_encoders={
+            datetime: lambda v: v.isoformat() if v else None
+        }
     )
 
-class TimestampMixin(BaseModel):
+class TimestampMixin:
     """Mixin for models with timestamp fields"""
     created_at: datetime = Field(default_factory=datetime.utcnow)
     updated_at: datetime = Field(default_factory=datetime.utcnow)
 
-class UUIDMixin(BaseModel):
+class UUIDMixin:
     """Mixin for models with UUID primary keys"""
     id: UUID = Field(..., description="Unique identifier")
 
