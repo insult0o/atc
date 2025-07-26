@@ -16,6 +16,9 @@ interface PDFViewerProps {
   onZoneSelect: (zoneId: string) => void;
   onZoneCreate: (zone: CreateZoneRequest) => void;
   confidenceThreshold: number;
+  highlightVisible?: boolean;
+  onPageChange?: (pageNumber: number) => void;
+  onViewportChange?: (viewport: any) => void;
 }
 
 interface ViewerState {
@@ -32,11 +35,16 @@ export function PDFViewer({
   selectedZone,
   onZoneSelect,
   onZoneCreate,
-  confidenceThreshold
+  confidenceThreshold,
+  highlightVisible = true,
+  onPageChange,
+  onViewportChange
 }: PDFViewerProps) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
+  const overlayCanvasRef = useRef<HTMLCanvasElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
   const pdfDocRef = useRef<pdfjsLib.PDFDocumentProxy | null>(null);
+  const viewportRef = useRef<any>(null);
   
   const [viewerState, setViewerState] = useState<ViewerState>({
     currentPage: 1,
@@ -86,20 +94,28 @@ export function PDFViewer({
 
   // Render specific page
   const renderPage = useCallback(async (pageNumber: number) => {
-    if (!pdfDocRef.current || !canvasRef.current) return;
+    if (!pdfDocRef.current || !canvasRef.current || !overlayCanvasRef.current) return;
 
     try {
       const page = await pdfDocRef.current.getPage(pageNumber);
       const canvas = canvasRef.current;
+      const overlayCanvas = overlayCanvasRef.current;
       const context = canvas.getContext('2d');
+      const overlayContext = overlayCanvas.getContext('2d');
       
-      if (!context) return;
+      if (!context || !overlayContext) return;
 
       const viewport = page.getViewport({ scale: viewerState.scale });
+      viewportRef.current = viewport;
       
       // Set canvas dimensions
       canvas.height = viewport.height;
       canvas.width = viewport.width;
+      overlayCanvas.height = viewport.height;
+      overlayCanvas.width = viewport.width;
+      
+      // Clear overlay
+      overlayContext.clearRect(0, 0, overlayCanvas.width, overlayCanvas.height);
       
       // Render page
       const renderContext = {
@@ -109,8 +125,15 @@ export function PDFViewer({
       
       await page.render(renderContext).promise;
       
-      // Render zones overlay
-      renderZonesOverlay(context, viewport);
+      // Render zones on overlay canvas
+      if (highlightVisible) {
+        renderZonesOverlay(overlayContext, viewport);
+      }
+      
+      // Notify viewport change
+      if (onViewportChange) {
+        onViewportChange(viewport);
+      }
       
     } catch (error) {
       console.error('Page rendering error:', error);
@@ -119,7 +142,7 @@ export function PDFViewer({
         error: 'Failed to render page'
       }));
     }
-  }, [viewerState.scale, zones, selectedZone, confidenceThreshold]);
+  }, [viewerState.scale, zones, selectedZone, confidenceThreshold, highlightVisible, onViewportChange]);
 
   // Render zones as overlays
   const renderZonesOverlay = useCallback((
@@ -244,8 +267,11 @@ export function PDFViewer({
   const goToPage = useCallback((pageNumber: number) => {
     if (pageNumber >= 1 && pageNumber <= viewerState.totalPages) {
       setViewerState(prev => ({ ...prev, currentPage: pageNumber }));
+      if (onPageChange) {
+        onPageChange(pageNumber);
+      }
     }
-  }, [viewerState.totalPages]);
+  }, [viewerState.totalPages, onPageChange]);
 
   const nextPage = useCallback(() => {
     goToPage(viewerState.currentPage + 1);
@@ -355,13 +381,20 @@ export function PDFViewer({
             <span className="ml-2">Loading PDF...</span>
           </div>
         ) : (
-          <canvas
-            ref={canvasRef}
-            className="shadow-lg bg-white cursor-crosshair"
-            onMouseDown={handleCanvasMouseDown}
-            onMouseMove={handleCanvasMouseMove}
-            onMouseUp={handleCanvasMouseUp}
-          />
+          <div className="relative inline-block">
+            <canvas
+              ref={canvasRef}
+              className="shadow-lg bg-white"
+            />
+            <canvas
+              ref={overlayCanvasRef}
+              className="absolute inset-0 cursor-crosshair"
+              style={{ pointerEvents: 'auto' }}
+              onMouseDown={handleCanvasMouseDown}
+              onMouseMove={handleCanvasMouseMove}
+              onMouseUp={handleCanvasMouseUp}
+            />
+          </div>
         )}
       </div>
     </div>

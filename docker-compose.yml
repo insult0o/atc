@@ -28,8 +28,8 @@ services:
   # Enhanced Unstructured Python Processor
   unstructured-processor:
     build:
-      context: ./docker/unstructured-local
-      dockerfile: Dockerfile
+      context: .
+      dockerfile: ./docker/unstructured-local/Dockerfile
     container_name: unstructured-processor
     ports:
       - "8001:8000"
