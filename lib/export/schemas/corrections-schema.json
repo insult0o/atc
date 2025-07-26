@@ -1,0 +1,122 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://pdf-intelligence.com/schemas/correction-export.json",
+  "title": "Correction Export Schema",
+  "description": "Schema for user corrections export with audit trail",
+  "type": "object",
+  "required": ["id", "timestamp", "userId", "documentId", "zoneId", "original", "corrected", "category", "impact", "confidence_change"],
+  "properties": {
+    "id": {
+      "type": "string",
+      "pattern": "^[a-zA-Z0-9-_]+$",
+      "description": "Unique correction identifier"
+    },
+    "timestamp": {
+      "type": "string",
+      "format": "date-time",
+      "description": "When the correction was made"
+    },
+    "userId": {
+      "type": "string",
+      "description": "User who made the correction"
+    },
+    "documentId": {
+      "type": "string",
+      "pattern": "^[a-zA-Z0-9-]+$"
+    },
+    "zoneId": {
+      "type": "string",
+      "description": "Zone that was corrected"
+    },
+    "original": {
+      "type": "object",
+      "required": ["content", "confidence", "tool"],
+      "properties": {
+        "content": {
+          "type": "string",
+          "description": "Original extracted content"
+        },
+        "confidence": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 1
+        },
+        "tool": {
+          "type": "string",
+          "description": "Tool that extracted original content"
+        },
+        "processingTime": {
+          "type": "number",
+          "description": "Processing time in milliseconds"
+        },
+        "metadata": {
+          "type": "object",
+          "description": "Additional tool-specific metadata"
+        }
+      }
+    },
+    "corrected": {
+      "type": "object",
+      "required": ["content", "confidence", "tool"],
+      "properties": {
+        "content": {
+          "type": "string",
+          "description": "Corrected content"
+        },
+        "confidence": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 1,
+          "description": "Confidence after correction (usually 1.0 for manual)"
+        },
+        "tool": {
+          "type": "string",
+          "description": "Tool or method used for correction (e.g., 'manual', 'ai-assisted')"
+        },
+        "processingTime": {
+          "type": "number"
+        },
+        "metadata": {
+          "type": "object"
+        }
+      }
+    },
+    "category": {
+      "type": "string",
+      "enum": ["spelling", "formatting", "content", "structure"],
+      "description": "Type of correction made"
+    },
+    "impact": {
+      "type": "string",
+      "enum": ["low", "medium", "high"],
+      "description": "Impact level of the correction"
+    },
+    "confidence_change": {
+      "type": "number",
+      "description": "Change in confidence score (corrected - original)"
+    },
+    "validation": {
+      "type": "object",
+      "properties": {
+        "validator": {
+          "type": "string",
+          "description": "Validation method or tool"
+        },
+        "score": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 1
+        },
+        "issues": {
+          "type": "array",
+          "items": { "type": "string" }
+        },
+        "suggestions": {
+          "type": "array",
+          "items": { "type": "string" }
+        }
+      }
+    }
+  },
+  "additionalProperties": false
+}

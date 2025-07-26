@@ -1,0 +1,74 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://pdf-intelligence.com/schemas/fine-tuning-example.json",
+  "title": "Fine-Tuning Example Schema",
+  "description": "Schema for fine-tuning JSONL format compatible with OpenAI and other LLMs",
+  "type": "object",
+  "required": ["messages", "metadata"],
+  "properties": {
+    "messages": {
+      "type": "array",
+      "minItems": 2,
+      "maxItems": 10,
+      "items": {
+        "type": "object",
+        "required": ["role", "content"],
+        "properties": {
+          "role": {
+            "type": "string",
+            "enum": ["system", "user", "assistant"]
+          },
+          "content": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 16384
+          }
+        },
+        "additionalProperties": false
+      }
+    },
+    "metadata": {
+      "type": "object",
+      "required": ["source", "documentId", "quality_score", "example_type"],
+      "properties": {
+        "source": {
+          "type": "string",
+          "description": "Source document identifier"
+        },
+        "documentId": {
+          "type": "string",
+          "pattern": "^[a-zA-Z0-9-]+$"
+        },
+        "pageNumber": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "quality_score": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 1,
+          "description": "Quality score for the training example"
+        },
+        "example_type": {
+          "type": "string",
+          "enum": ["qa", "instruction", "chat", "extraction"]
+        },
+        "domain": {
+          "type": "string",
+          "description": "Domain or category of the content"
+        },
+        "complexity": {
+          "type": "string",
+          "enum": ["simple", "moderate", "complex"]
+        },
+        "tokens": {
+          "type": "integer",
+          "minimum": 1,
+          "description": "Total token count for all messages"
+        }
+      },
+      "additionalProperties": false
+    }
+  },
+  "additionalProperties": false
+}

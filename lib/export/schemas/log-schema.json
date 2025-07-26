@@ -1,0 +1,182 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://pdf-intelligence.com/schemas/export-log.json",
+  "title": "Export Log Schema",
+  "description": "Schema for human-readable export logs",
+  "type": "object",
+  "required": ["header", "summary", "sections", "errors", "warnings", "footer"],
+  "properties": {
+    "header": {
+      "type": "object",
+      "required": ["title", "exportId", "timestamp", "documentName", "exportFormats", "version"],
+      "properties": {
+        "title": {
+          "type": "string",
+          "description": "Log title"
+        },
+        "exportId": {
+          "type": "string",
+          "pattern": "^[a-zA-Z0-9-]+$"
+        },
+        "timestamp": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "documentName": {
+          "type": "string"
+        },
+        "exportFormats": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "enum": ["rag", "jsonl", "corrections", "manifest", "log"]
+          }
+        },
+        "version": {
+          "type": "string",
+          "pattern": "^\\d+\\.\\d+\\.\\d+$"
+        }
+      }
+    },
+    "summary": {
+      "type": "object",
+      "required": ["totalItems", "successfulExports", "failedExports", "processingTime", "fileSizes", "highlights"],
+      "properties": {
+        "totalItems": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "successfulExports": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "failedExports": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "processingTime": {
+          "type": "number",
+          "minimum": 0,
+          "description": "Processing time in seconds"
+        },
+        "fileSizes": {
+          "type": "object",
+          "properties": {
+            "rag": { "type": "integer", "minimum": 0 },
+            "jsonl": { "type": "integer", "minimum": 0 },
+            "corrections": { "type": "integer", "minimum": 0 },
+            "manifest": { "type": "integer", "minimum": 0 },
+            "log": { "type": "integer", "minimum": 0 }
+          }
+        },
+        "highlights": {
+          "type": "array",
+          "items": { "type": "string" }
+        }
+      }
+    },
+    "sections": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["title", "level", "content"],
+        "properties": {
+          "title": {
+            "type": "string"
+          },
+          "level": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 6
+          },
+          "content": {
+            "oneOf": [
+              { "type": "string" },
+              { "type": "array", "items": { "type": "string" } },
+              { "type": "object" }
+            ]
+          },
+          "subsections": {
+            "type": "array",
+            "items": { "$ref": "#/properties/sections/items" }
+          }
+        }
+      }
+    },
+    "errors": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["timestamp", "code", "message", "context"],
+        "properties": {
+          "timestamp": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "code": {
+            "type": "string",
+            "pattern": "^[A-Z][A-Z0-9_]+$"
+          },
+          "message": {
+            "type": "string"
+          },
+          "context": {
+            "type": "object"
+          },
+          "stackTrace": {
+            "type": "string"
+          }
+        }
+      }
+    },
+    "warnings": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["timestamp", "code", "message", "context"],
+        "properties": {
+          "timestamp": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "code": {
+            "type": "string",
+            "pattern": "^[A-Z][A-Z0-9_]+$"
+          },
+          "message": {
+            "type": "string"
+          },
+          "context": {
+            "type": "object"
+          },
+          "suggestion": {
+            "type": "string"
+          }
+        }
+      }
+    },
+    "footer": {
+      "type": "object",
+      "required": ["generatedAt", "exportDuration", "platformVersion"],
+      "properties": {
+        "generatedAt": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "exportDuration": {
+          "type": "number",
+          "minimum": 0,
+          "description": "Export duration in seconds"
+        },
+        "platformVersion": {
+          "type": "string"
+        },
+        "additionalNotes": {
+          "type": "array",
+          "items": { "type": "string" }
+        }
+      }
+    }
+  },
+  "additionalProperties": false
+}

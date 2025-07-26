@@ -1,0 +1,170 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://pdf-intelligence.com/schemas/zone-manifest.json",
+  "title": "Zone Manifest Schema",
+  "description": "Schema for comprehensive zone processing manifest",
+  "type": "object",
+  "required": ["documentId", "documentName", "totalPages", "totalZones", "processingTime", "exportTimestamp", "zones", "statistics", "toolUsage"],
+  "properties": {
+    "documentId": {
+      "type": "string",
+      "pattern": "^[a-zA-Z0-9-]+$"
+    },
+    "documentName": {
+      "type": "string",
+      "description": "Original document filename"
+    },
+    "totalPages": {
+      "type": "integer",
+      "minimum": 1
+    },
+    "totalZones": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "processingTime": {
+      "type": "number",
+      "description": "Total processing time in seconds"
+    },
+    "exportTimestamp": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "zones": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["id", "page", "coordinates", "contentType", "content", "confidence", "status", "tool", "processingHistory", "metadata"],
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "page": {
+            "type": "integer",
+            "minimum": 1
+          },
+          "coordinates": {
+            "type": "object",
+            "required": ["x", "y", "width", "height"],
+            "properties": {
+              "x": { "type": "number" },
+              "y": { "type": "number" },
+              "width": { "type": "number", "minimum": 0 },
+              "height": { "type": "number", "minimum": 0 }
+            }
+          },
+          "contentType": {
+            "type": "string",
+            "enum": ["text", "table", "diagram", "mixed"]
+          },
+          "content": {
+            "type": "string"
+          },
+          "confidence": {
+            "type": "number",
+            "minimum": 0,
+            "maximum": 1
+          },
+          "status": {
+            "type": "string",
+            "enum": ["pending", "processing", "completed", "error"]
+          },
+          "tool": {
+            "type": "string"
+          },
+          "processingHistory": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "required": ["timestamp", "tool", "action", "result", "duration"],
+              "properties": {
+                "timestamp": { "type": "string", "format": "date-time" },
+                "tool": { "type": "string" },
+                "action": { "type": "string" },
+                "result": { "type": "string", "enum": ["success", "failure", "partial"] },
+                "confidence": { "type": "number", "minimum": 0, "maximum": 1 },
+                "duration": { "type": "number" }
+              }
+            }
+          },
+          "corrections": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "required": ["correctionId", "timestamp", "category", "impact"],
+              "properties": {
+                "correctionId": { "type": "string" },
+                "timestamp": { "type": "string", "format": "date-time" },
+                "category": { "type": "string", "enum": ["spelling", "formatting", "content", "structure"] },
+                "impact": { "type": "string", "enum": ["low", "medium", "high"] }
+              }
+            }
+          },
+          "metadata": {
+            "type": "object"
+          }
+        }
+      }
+    },
+    "statistics": {
+      "type": "object",
+      "required": ["averageConfidence", "confidenceDistribution", "processingTimeByTool", "successRate", "correctionRate", "contentTypeDistribution"],
+      "properties": {
+        "averageConfidence": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 1
+        },
+        "confidenceDistribution": {
+          "type": "object",
+          "patternProperties": {
+            "^(0\\.[0-9]|1\\.0)-\\d+\\.\\d+$": { "type": "number" }
+          }
+        },
+        "processingTimeByTool": {
+          "type": "object",
+          "additionalProperties": { "type": "number" }
+        },
+        "successRate": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 1
+        },
+        "correctionRate": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 1
+        },
+        "contentTypeDistribution": {
+          "type": "object",
+          "properties": {
+            "text": { "type": "number" },
+            "table": { "type": "number" },
+            "diagram": { "type": "number" },
+            "mixed": { "type": "number" }
+          }
+        }
+      }
+    },
+    "toolUsage": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["tool", "invocations", "successCount", "failureCount", "averageProcessingTime", "averageConfidence", "contentTypes"],
+        "properties": {
+          "tool": { "type": "string" },
+          "invocations": { "type": "integer", "minimum": 0 },
+          "successCount": { "type": "integer", "minimum": 0 },
+          "failureCount": { "type": "integer", "minimum": 0 },
+          "averageProcessingTime": { "type": "number", "minimum": 0 },
+          "averageConfidence": { "type": "number", "minimum": 0, "maximum": 1 },
+          "contentTypes": {
+            "type": "array",
+            "items": { "type": "string", "enum": ["text", "table", "diagram", "mixed"] }
+          }
+        }
+      }
+    }
+  },
+  "additionalProperties": false
+}

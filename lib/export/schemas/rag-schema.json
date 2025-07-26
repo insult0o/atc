@@ -1,0 +1,129 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://pdf-intelligence.com/schemas/rag-chunk.json",
+  "title": "RAG Chunk Schema",
+  "description": "Schema for RAG-ready JSON chunks with metadata and embeddings",
+  "type": "object",
+  "required": ["id", "content", "metadata", "chunkIndex", "totalChunks", "overlap"],
+  "properties": {
+    "id": {
+      "type": "string",
+      "pattern": "^[a-zA-Z0-9-_]+$",
+      "description": "Unique identifier for the chunk"
+    },
+    "content": {
+      "type": "string",
+      "minLength": 1,
+      "description": "The actual text content of the chunk"
+    },
+    "metadata": {
+      "type": "object",
+      "required": ["source", "documentId", "pageNumber", "zoneId", "confidence", "timestamp", "processingTool", "contentType"],
+      "properties": {
+        "source": {
+          "type": "string",
+          "description": "Source document filename or path"
+        },
+        "documentId": {
+          "type": "string",
+          "pattern": "^[a-zA-Z0-9-]+$"
+        },
+        "pageNumber": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "pageRange": {
+          "type": "object",
+          "properties": {
+            "start": { "type": "integer", "minimum": 1 },
+            "end": { "type": "integer", "minimum": 1 }
+          },
+          "required": ["start", "end"]
+        },
+        "zoneId": {
+          "type": "string"
+        },
+        "zoneIds": {
+          "type": "array",
+          "items": { "type": "string" }
+        },
+        "confidence": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 1
+        },
+        "timestamp": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "processingTool": {
+          "type": "string"
+        },
+        "contentType": {
+          "type": "string",
+          "enum": ["text", "table", "diagram", "mixed"]
+        },
+        "language": {
+          "type": "string",
+          "pattern": "^[a-z]{2}(-[A-Z]{2})?$"
+        },
+        "keywords": {
+          "type": "array",
+          "items": { "type": "string" }
+        },
+        "entities": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": ["text", "type", "confidence", "position"],
+            "properties": {
+              "text": { "type": "string" },
+              "type": { "type": "string" },
+              "confidence": { "type": "number", "minimum": 0, "maximum": 1 },
+              "position": {
+                "type": "object",
+                "required": ["start", "end"],
+                "properties": {
+                  "start": { "type": "integer", "minimum": 0 },
+                  "end": { "type": "integer", "minimum": 0 }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "embeddings": {
+      "type": "array",
+      "items": { "type": "number" },
+      "description": "Vector embeddings for the chunk"
+    },
+    "chunkIndex": {
+      "type": "integer",
+      "minimum": 0,
+      "description": "Zero-based index of this chunk"
+    },
+    "totalChunks": {
+      "type": "integer",
+      "minimum": 1,
+      "description": "Total number of chunks in the document"
+    },
+    "overlap": {
+      "type": "object",
+      "required": ["previous", "next"],
+      "properties": {
+        "previous": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Number of tokens overlapping with previous chunk"
+        },
+        "next": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Number of tokens overlapping with next chunk"
+        }
+      }
+    }
+  },
+  "additionalProperties": false
+}
