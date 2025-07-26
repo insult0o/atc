@@ -4,6 +4,81 @@ import { ProcessingResult } from '../../../lib/pdf-processing/processing-queue';
 import { WeightedConfidenceScore } from '../../../lib/pdf-processing/confidence-weighting';
 import { ToolConfidenceScore } from '../../../lib/pdf-processing/tool-confidence';
 
+// Enhanced confidence visual configuration
+export interface ConfidenceVisualConfig {
+  highConfidence: {
+    threshold: number;
+    opacity: number;
+    color: string;
+    borderStyle: 'solid' | 'dashed' | 'dotted';
+  };
+  mediumConfidence: {
+    threshold: number;
+    opacity: number;
+    color: string;
+    borderStyle: 'solid' | 'dashed' | 'dotted';
+  };
+  lowConfidence: {
+    threshold: number;
+    opacity: number;
+    color: string;
+    borderStyle: 'solid' | 'dashed' | 'dotted';
+  };
+  enableTransitions: boolean;
+  transitionDuration: number;
+  colorBlindMode: boolean;
+}
+
+// Default visual configuration
+export const defaultVisualConfig: ConfidenceVisualConfig = {
+  highConfidence: {
+    threshold: 0.8,
+    opacity: 1.0,
+    color: '#4CAF50', // Green
+    borderStyle: 'solid'
+  },
+  mediumConfidence: {
+    threshold: 0.5,
+    opacity: 0.7,
+    color: '#FF9800', // Orange
+    borderStyle: 'dashed'
+  },
+  lowConfidence: {
+    threshold: 0.0,
+    opacity: 0.4,
+    color: '#F44336', // Red
+    borderStyle: 'dotted'
+  },
+  enableTransitions: true,
+  transitionDuration: 300,
+  colorBlindMode: false
+};
+
+// Color-blind friendly configuration
+export const colorBlindConfig: ConfidenceVisualConfig = {
+  highConfidence: {
+    threshold: 0.8,
+    opacity: 1.0,
+    color: '#1E88E5', // Blue
+    borderStyle: 'solid'
+  },
+  mediumConfidence: {
+    threshold: 0.5,
+    opacity: 0.7,
+    color: '#FFC107', // Amber
+    borderStyle: 'dashed'
+  },
+  lowConfidence: {
+    threshold: 0.0,
+    opacity: 0.4,
+    color: '#E91E63', // Pink
+    borderStyle: 'dotted'
+  },
+  enableTransitions: true,
+  transitionDuration: 300,
+  colorBlindMode: true
+};
+
 // Confidence visualization components for zones
 export interface ConfidenceVisualizerProps {
   zone: Zone;
@@ -11,6 +86,9 @@ export interface ConfidenceVisualizerProps {
   confidenceScores: Map<string, WeightedConfidenceScore>;
   onThresholdChange?: (threshold: number) => void;
   onFilterChange?: (filters: ConfidenceFilters) => void;
+  visualConfig?: ConfidenceVisualConfig;
+  onVisualConfigChange?: (config: ConfidenceVisualConfig) => void;
+  showAnimations?: boolean;
 }
 
 export interface ConfidenceFilters {
@@ -68,7 +146,10 @@ export const ConfidenceVisualizer: React.FC<ConfidenceVisualizerProps> = ({
   results,
   confidenceScores,
   onThresholdChange,
-  onFilterChange
+  onFilterChange,
+  visualConfig = defaultVisualConfig,
+  onVisualConfigChange,
+  showAnimations = true
 }) => {
   const [filters, setFilters] = React.useState<ConfidenceFilters>({
     minConfidence: 0,
@@ -82,6 +163,13 @@ export const ConfidenceVisualizer: React.FC<ConfidenceVisualizerProps> = ({
   const [showDetails, setShowDetails] = React.useState(false);
 
   const getConfidenceColor = (confidence: number): string => {
+    const config = visualConfig.colorBlindMode ? colorBlindConfig : visualConfig;
+    if (confidence >= config.highConfidence.threshold) return config.highConfidence.color;
+    if (confidence >= config.mediumConfidence.threshold) return config.mediumConfidence.color;
+    return config.lowConfidence.color;
+  };
+
+  const getConfidenceTextColor = (confidence: number): string => {
     if (confidence >= 0.8) return 'text-green-600';
     if (confidence >= 0.6) return 'text-blue-600';
     if (confidence >= 0.4) return 'text-yellow-600';
@@ -95,6 +183,26 @@ export const ConfidenceVisualizer: React.FC<ConfidenceVisualizerProps> = ({
     if (confidence >= 0.4) return 'Medium';
     if (confidence >= 0.2) return 'Low';
     return 'Very Low';
+  };
+
+  const getConfidenceOpacity = (confidence: number): number => {
+    const config = visualConfig;
+    if (confidence >= config.highConfidence.threshold) return config.highConfidence.opacity;
+    if (confidence >= config.mediumConfidence.threshold) return config.mediumConfidence.opacity;
+    return config.lowConfidence.opacity;
+  };
+
+  const getConfidenceBorderStyle = (confidence: number): string => {
+    const config = visualConfig;
+    if (confidence >= config.highConfidence.threshold) return config.highConfidence.borderStyle;
+    if (confidence >= config.mediumConfidence.threshold) return config.mediumConfidence.borderStyle;
+    return config.lowConfidence.borderStyle;
+  };
+
+  // Generate CSS classes for smooth transitions
+  const getTransitionClasses = (): string => {
+    if (!visualConfig.enableTransitions || !showAnimations) return '';
+    return `transition-all duration-${visualConfig.transitionDuration} ease-in-out`;
   };
 
   const filteredResults = results.filter(result => {
@@ -160,6 +268,8 @@ export const ConfidenceVisualizer: React.FC<ConfidenceVisualizerProps> = ({
               isSelected={selectedTool === result.toolName}
               onClick={() => setSelectedTool(result.toolName)}
               onShowDetails={() => setShowDetails(true)}
+              visualConfig={visualConfig}
+              showAnimations={showAnimations}
             />
           );
         })}
@@ -216,13 +326,14 @@ export const ConfidenceIndicator: React.FC<ConfidenceIndicatorProps> = ({
           strokeWidth="3"
           fill="none"
           strokeDasharray={`${confidence * 283} 283`}
-          className={getConfidenceColor(confidence)}
+          stroke={getConfidenceColor(confidence)}
+          className={showAnimations ? 'transition-all duration-300' : ''}
         />
       </svg>
       
       {/* Percentage text */}
       <div className="absolute inset-0 flex items-center justify-center">
-        <span className={`font-semibold ${getConfidenceColor(confidence)}`}>
+        <span className={`font-semibold ${getConfidenceTextColor(confidence)}`}>
           {percentage}%
         </span>
       </div>
@@ -432,12 +543,37 @@ const ToolConfidenceCard: React.FC<{
   isSelected: boolean;
   onClick: () => void;
   onShowDetails: () => void;
-}> = ({ toolName, result, confidence, isSelected, onClick, onShowDetails }) => {
+  visualConfig?: ConfidenceVisualConfig;
+  showAnimations?: boolean;
+}> = ({ toolName, result, confidence, isSelected, onClick, onShowDetails, visualConfig = defaultVisualConfig, showAnimations = true }) => {
+  const cardOpacity = visualConfig.highConfidence.opacity * 0.1 + confidence.finalScore * 0.9;
+  const borderColor = getConfidenceColor(confidence.finalScore);
+  const borderStyle = getConfidenceBorderStyle(confidence.finalScore);
+  
+  const getConfidenceColor = (confidence: number): string => {
+    const config = visualConfig.colorBlindMode ? colorBlindConfig : visualConfig;
+    if (confidence >= config.highConfidence.threshold) return config.highConfidence.color;
+    if (confidence >= config.mediumConfidence.threshold) return config.mediumConfidence.color;
+    return config.lowConfidence.color;
+  };
+  
+  const getConfidenceBorderStyle = (confidence: number): string => {
+    const config = visualConfig;
+    if (confidence >= config.highConfidence.threshold) return config.highConfidence.borderStyle;
+    if (confidence >= config.mediumConfidence.threshold) return config.mediumConfidence.borderStyle;
+    return config.lowConfidence.borderStyle;
+  };
   return (
     <div
-      className={`p-3 rounded border cursor-pointer transition-all ${
-        isSelected ? 'border-blue-500 bg-blue-50' : 'border-gray-200 hover:border-gray-300'
-      }`}
+      className={`p-3 rounded cursor-pointer ${
+        isSelected ? 'border-blue-500 bg-blue-50' : 'hover:border-gray-300'
+      } ${showAnimations ? 'transition-all duration-300' : ''}`}
+      style={{
+        opacity: cardOpacity,
+        borderColor: isSelected ? undefined : borderColor,
+        borderStyle: isSelected ? undefined : borderStyle,
+        borderWidth: '2px'
+      }}
       onClick={onClick}
     >
       <div className="flex justify-between items-center">
