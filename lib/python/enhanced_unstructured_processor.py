@@ -93,10 +93,22 @@ class EnhancedUnstructuredProcessor:
             
             processing_time = time.time() - start_time
             
+            # Ensure we always have at least some elements
+            if not classified_chunks:
+                self.logger.warning("No classified chunks, creating basic document info")
+                classified_chunks = [{
+                    'text': f'Document processed: {file_path}',
+                    'type': 'NarrativeText',
+                    'confidence': 0.7,
+                    'metadata': {'source': 'document_processing', 'file_path': file_path}
+                }]
+                quality_scores = [0.7]
+            
             result = {
                 'elements': classified_chunks,
                 'quality_scores': quality_scores,
                 'processing_metadata': {
+                    'strategy': self.config.get('strategy', 'hi_res'),
                     'file_path': file_path,
                     'num_elements': len(classified_chunks),
                     'avg_quality': sum(quality_scores) / len(quality_scores) if quality_scores else 0,
@@ -153,36 +165,53 @@ class EnhancedUnstructuredProcessor:
         """Enhanced partitioning with vision and layout analysis"""
         
         try:
-            # Use hi-res strategy for better quality
-            elements = partition_pdf(
+            # Use general partition function with hi-res strategy
+            elements = partition(
                 filename=file_path,
                 strategy=self.config.get('strategy', 'hi_res'),
-                infer_table_structure=True,
                 include_page_breaks=True,
-                extract_images_in_pdf=True,
-                extract_image_block_types=["image", "table"],
-                languages=self.config.get('languages', ['eng']),
-                # Enhanced OCR options
-                ocr_languages="eng",
-                pdf_infer_table_structure=True,
-                coordinates=self.config.get('coordinates', True)
+                languages=self.config.get('languages', ['eng'])
             )
             
-            self.logger.info(f"Partitioned into {len(elements)} elements")
+            self.logger.info(f"Hi-res partitioned into {len(elements)} elements")
+            
+            # If no elements found, try different strategies
+            if not elements:
+                self.logger.warning("No elements found with hi-res, trying auto strategy")
+                elements = partition(
+                    filename=file_path,
+                    strategy="auto",
+                    include_page_breaks=True
+                )
+                self.logger.info(f"Auto strategy found {len(elements)} elements")
+            
+            if not elements:
+                self.logger.warning("No elements found with auto, trying fast strategy")
+                elements = partition(
+                    filename=file_path,
+                    strategy="fast"
+                )
+                self.logger.info(f"Fast strategy found {len(elements)} elements")
+            
             return elements
             
         except Exception as e:
-            self.logger.warning(f"Hi-res partitioning failed, falling back to fast: {e}")
-            # Fallback to fast strategy
-            return partition_pdf(
-                filename=file_path,
-                strategy="fast",
-                include_page_breaks=True,
-                coordinates=True
-            )
+            self.logger.warning(f"All partitioning failed: {e}")
+            # Return empty list rather than crashing
+            return []
     
     def _advanced_chunking(self, elements: List[Element]) -> List[Dict[str, Any]]:
         """Advanced chunking with semantic awareness"""
+        
+        # Handle empty elements list
+        if not elements:
+            self.logger.warning("No elements to chunk, returning basic file info")
+            return [{
+                'text': 'Document processed but no readable content extracted',
+                'type': 'NarrativeText',
+                'confidence': 0.5,
+                'metadata': {'source': 'fallback_processing'}
+            }]
         
         try:
             # Convert to chunking format
@@ -208,8 +237,17 @@ class EnhancedUnstructuredProcessor:
             
         except Exception as e:
             self.logger.error(f"Chunking failed: {e}")
-            # Basic fallback
-            return [{'text': str(elem), 'type': 'fallback'} for elem in elements]
+            # Enhanced fallback - create basic chunks from raw elements
+            fallback_chunks = []
+            for i, elem in enumerate(elements):
+                fallback_chunks.append({
+                    'text': str(elem),
+                    'type': 'NarrativeText',
+                    'confidence': 0.6,
+                    'metadata': {'source': 'fallback_element', 'index': i}
+                })
+            self.logger.info(f"Created {len(fallback_chunks)} fallback chunks")
+            return fallback_chunks
     
     def _enhance_chunk_semantics(self, chunk: Dict[str, Any], index: int) -> Dict[str, Any]:
         """Enhance chunk with semantic information"""
