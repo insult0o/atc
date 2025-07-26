@@ -1,7 +1,7 @@
 import React, { useState, useMemo } from 'react';
 import { Zone } from '../zones/ZoneManager';
 import { ProcessingResult } from '../../../lib/pdf-processing/processing-queue';
-import { WeightedConfidenceScore } from '../../../lib/pdf-processing/confidence-weighting';
+import { WeightedConfidence } from '../../../lib/pdf-processing/confidence-weighting';
 import { ConfidenceHeatmap } from './ConfidenceVisualizer';
 
 export interface ConfidenceAnalyticsProps {

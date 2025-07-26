@@ -142,5 +142,5 @@ export async function GET(request: NextRequest) {
   }
 }
 
-// Export the WebSocket server for external use
-export { wss, manager }; 
+// Note: WebSocket server is initialized internally
+// For production use, consider using a dedicated WebSocket service 

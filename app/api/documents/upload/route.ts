@@ -3,7 +3,24 @@ import { writeFile, mkdir } from 'fs/promises';
 import { join } from 'path';
 import { v4 as uuidv4 } from 'uuid';
 import * as pdfjsLib from 'pdfjs-dist';
-import type { Document, ProcessingStatus } from '@pdf-platform/shared';
+// Define types locally for API route
+interface Document {
+  id: string;
+  name: string;
+  filePath: string;
+  fileSize: number;
+  pageCount: number;
+  status: 'uploaded' | 'processing' | 'completed' | 'error';
+  createdAt: Date;
+  updatedAt: Date;
+}
+
+interface ProcessingStatus {
+  totalZones: number;
+  completedZones: number;
+  currentlyProcessing: string[];
+  estimatedTimeRemaining: number;
+}
 
 // Configure PDF.js worker
 pdfjsLib.GlobalWorkerOptions.workerSrc = 'pdfjs-dist/build/pdf.worker.js';
