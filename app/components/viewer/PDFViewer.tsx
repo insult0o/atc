@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState, useCallback } from 'react';
 import { ChevronLeft, ChevronRight, ZoomIn, ZoomOut, RotateCcw } from 'lucide-react';
 import { Button } from '../../../components/ui/button';
-import type { Zone, CreateZoneRequest } from '@pdf-platform/shared';
+import type { Zone } from '../../../lib/types/zone';
 
 // PDF.js imports
 import * as pdfjsLib from 'pdfjs-dist';

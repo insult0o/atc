@@ -111,7 +111,7 @@ else
 fi
 
 # Check Main Backend
-if curl -s http://localhost:$MAIN_BACKEND_PORT/docs > /dev/null; then
+if curl -s http://localhost:$MAIN_BACKEND_PORT/api/docs > /dev/null; then
     echo "   ✅ Main Backend: RUNNING"
 else
     echo "   ❌ Main Backend: FAILED"
@@ -127,7 +127,7 @@ fi
 echo ""
 echo "🎉 All services started! Access your application:"
 echo "   🌐 Frontend:     http://localhost:$FRONTEND_PORT"
-echo "   📊 Backend API:  http://localhost:$MAIN_BACKEND_PORT/docs"
+echo "   📊 Backend API:  http://localhost:$MAIN_BACKEND_PORT/api/docs"
 echo "   🔧 Processing:   http://localhost:$PROCESSING_SERVER_PORT/docs"
 echo ""
 echo "💡 Logs will appear below. Press Ctrl+C to stop all services."

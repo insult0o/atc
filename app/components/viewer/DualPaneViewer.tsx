@@ -25,7 +25,8 @@ import {
   Link,
   Unlink
 } from 'lucide-react';
-import type { Zone } from '@pdf-platform/shared';
+import type { Zone } from '../../../lib/types/zone';
+import { Zone as ComponentZone } from '../zones/ZoneManager';
 
 interface DualPaneViewerProps {
   documentId: string;
@@ -33,6 +34,11 @@ interface DualPaneViewerProps {
   extractedContent: ExtractedContent[];
   onZoneSelect?: (zoneId: string) => void;
   onContentEdit?: (zoneId: string, content: string) => void;
+  onZoneCreate?: (zone: ComponentZone) => void;
+  onZoneUpdate?: (zoneId: string, updates: Partial<ComponentZone>) => void;
+  onZoneDelete?: (zoneId: string) => void;
+  realTimeEnabled?: boolean;
+  collaborationEnabled?: boolean;
 }
 
 export interface ExtractedContent {
@@ -80,7 +86,12 @@ export function DualPaneViewer({
   zones,
   extractedContent,
   onZoneSelect,
-  onContentEdit
+  onContentEdit,
+  onZoneCreate,
+  onZoneUpdate,
+  onZoneDelete,
+  realTimeEnabled = false,
+  collaborationEnabled = false
 }: DualPaneViewerProps) {
   const leftPaneRef = useRef<HTMLDivElement>(null);
   const rightPaneRef = useRef<HTMLDivElement>(null);
@@ -155,11 +166,53 @@ export function DualPaneViewer({
     onZoneSelect?.(zoneId);
   }, [onZoneSelect, recordMetric]);
 
-  // Handle zone creation
+  // Handle zone creation with sophisticated state management
   const handleZoneCreate = useCallback((zoneData: any) => {
     console.log('🎯 Zone created:', zoneData);
-    // Here you would typically send this to the backend
-  }, []);
+    
+    if (onZoneCreate) {
+      // Convert the zone data to component zone format
+      const componentZone: ComponentZone = {
+        id: zoneData.id || `zone_${Date.now()}`,
+        coordinates: zoneData.coordinates || zoneData.bounds,
+        bounds: zoneData.bounds || zoneData.coordinates,
+        contentType: zoneData.type || zoneData.contentType || 'text',
+        confidence: zoneData.confidence || 0.8,
+        characteristics: zoneData.characteristics || {
+          textDensity: 0.5,
+          lineSpacing: 12,
+          wordSpacing: 4,
+          fontSizes: [12],
+          hasStructure: false,
+          hasImages: false,
+          complexity: 'medium',
+          readingOrder: 1
+        },
+        assignedTool: zoneData.assignedTool,
+        fallbackTools: zoneData.fallbackTools || [],
+        status: 'detected',
+        pageNumber: zoneData.pageNumber || 1,
+        textContent: zoneData.textContent,
+        processingResults: zoneData.processingResults,
+        userModified: true,
+        lastModified: new Date()
+      };
+      
+      onZoneCreate(componentZone);
+    }
+  }, [onZoneCreate]);
+  
+  // Handle zone updates
+  const handleZoneUpdate = useCallback((zoneId: string, updates: any) => {
+    console.log('🎯 Zone updated:', zoneId, updates);
+    onZoneUpdate?.(zoneId, updates);
+  }, [onZoneUpdate]);
+  
+  // Handle zone deletion
+  const handleZoneDelete = useCallback((zoneId: string) => {
+    console.log('🎯 Zone deleted:', zoneId);
+    onZoneDelete?.(zoneId);
+  }, [onZoneDelete]);
 
   // Handle pane divider drag
   const handleDividerMouseDown = useCallback((e: React.MouseEvent) => {
