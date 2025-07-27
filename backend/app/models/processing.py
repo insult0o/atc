@@ -97,28 +97,9 @@ class Zone(BaseModel, UUIDMixin, TimestampMixin):
 
 class ZoneResponse(Zone):
     """Zone response with additional computed fields"""
-    content_preview: str = Field(..., description="Preview of content")
-    word_count: Optional[int] = Field(None, description="Number of words")
-    character_count: Optional[int] = Field(None, description="Number of characters")
-    
-    @validator('content_preview', always=True)
-    def compute_content_preview(cls, v, values):
-        content = values.get('content', '')
-        if content:
-            return content[:100] + ('...' if len(content) > 100 else '')
-        return 'No content extracted'
-    
-    @validator('word_count', always=True)
-    def compute_word_count(cls, v, values):
-        content = values.get('content', '')
-        if content:
-            return len(content.split())
-        return 0
-    
-    @validator('character_count', always=True)
-    def compute_character_count(cls, v, values):
-        content = values.get('content', '')
-        return len(content)
+    content_preview: str = Field(default="", description="Preview of content")
+    word_count: int = Field(default=0, description="Number of words")
+    character_count: int = Field(default=0, description="Number of characters")
 
 class ProcessingJob(BaseModel, UUIDMixin, TimestampMixin):
     """Processing job model"""

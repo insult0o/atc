@@ -24,7 +24,7 @@ from app.dependencies import get_zone_service
 logger = logging.getLogger(__name__)
 router = APIRouter()
 
-@router.get("/documents/{document_id}/zones", response_model=ZoneListResponse)
+@router.get("/documents/{document_id}/zones")
 async def get_document_zones(
     document_id: UUID,
     zone_type: Optional[ZoneType] = Query(None, description="Filter by zone type"),
@@ -42,27 +42,39 @@ async def get_document_zones(
     - Returns list of zones with statistics
     """
     try:
-        zones = await zone_service.get_zones_by_document(
-            document_id=document_id,
-            zone_type=zone_type,
-            status=status,
-            page_number=page_number
-        )
+        # Get zones from demo storage
+        zones = []
+        for zone_data in zone_service._demo_zones.values():
+            if isinstance(zone_data, dict) and zone_data.get("document_id") == str(document_id):
+                # Apply filters
+                if zone_type and zone_data.get("zone_type") != zone_type:
+                    continue
+                if status and zone_data.get("status") != status:
+                    continue
+                if page_number and zone_data.get("page_number") != page_number:
+                    continue
+                zones.append(zone_data)
         
-        logger.info(
-            f"Retrieved {zones.total} zones for document {document_id}",
-            extra={
-                "document_id": str(document_id),
-                "total_zones": zones.total,
-                "filters": {
-                    "zone_type": zone_type.value if zone_type else None,
-                    "status": status.value if status else None,
-                    "page_number": page_number
-                }
-            }
-        )
+        # Calculate statistics
+        by_type = {}
+        by_status = {}
+        for zone in zones:
+            zone_type_key = zone.get("zone_type", "unknown")
+            status_key = zone.get("status", "unknown")
+            by_type[zone_type_key] = by_type.get(zone_type_key, 0) + 1
+            by_status[status_key] = by_status.get(status_key, 0) + 1
         
-        return zones
+        response = {
+            "zones": zones,
+            "total": len(zones),
+            "by_type": by_type,
+            "by_status": by_status,
+            "average_confidence": sum(z.get("confidence", 0) for z in zones) / len(zones) if zones else None
+        }
+        
+        logger.info(f"Retrieved {len(zones)} zones for document {document_id}")
+        
+        return response
         
     except Exception as e:
         logger.error(f"Error retrieving zones for document {document_id}: {str(e)}")
@@ -71,7 +83,7 @@ async def get_document_zones(
             detail=f"Failed to retrieve zones: {str(e)}"
         )
 
-@router.post("/documents/{document_id}/zones", response_model=ZoneResponse)
+@router.post("/documents/{document_id}/zones")
 async def create_zone(
     document_id: UUID,
     zone_data: ZoneCreate,
@@ -92,19 +104,39 @@ async def create_zone(
                 {"url_document_id": str(document_id), "data_document_id": str(zone_data.document_id)}
             )
         
-        zone = await zone_service.create_zone(zone_data)
+        # For Epic 6 demo, create a simple response
+        from uuid import uuid4
+        from datetime import datetime
         
-        logger.info(
-            f"Created zone {zone.id} for document {document_id}",
-            extra={
-                "zone_id": str(zone.id),
-                "document_id": str(document_id),
-                "zone_type": zone.zone_type.value,
-                "page_number": zone.page_number
-            }
-        )
+        zone_id = uuid4()
+        now = datetime.utcnow()
         
-        return zone
+        # Store in demo storage
+        zone_dict = {
+            "id": str(zone_id),
+            "document_id": str(document_id),
+            "zone_index": zone_data.zone_index,
+            "page_number": zone_data.page_number,
+            "zone_type": zone_data.zone_type,
+            "coordinates": zone_data.coordinates.model_dump(),
+            "content": zone_data.content,
+            "confidence": zone_data.confidence,
+            "processing_tool": zone_data.processing_tool,
+            "status": "completed",
+            "metadata": zone_data.metadata,
+            "created_at": now.isoformat(),
+            "updated_at": now.isoformat(),
+            "content_preview": (zone_data.content[:100] + '...' if zone_data.content and len(zone_data.content) > 100 else zone_data.content) if zone_data.content else "No content",
+            "word_count": len(zone_data.content.split()) if zone_data.content else 0,
+            "character_count": len(zone_data.content) if zone_data.content else 0
+        }
+        
+        # Store in service demo storage with string key
+        zone_service._demo_zones[str(zone_id)] = zone_dict
+        
+        logger.info(f"Created zone {zone_id} for document {document_id}")
+        
+        return zone_dict
         
     except InvalidZoneOperationError:
         raise
