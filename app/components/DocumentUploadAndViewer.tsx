@@ -1,14 +1,23 @@
 'use client';
 
 import React, { useState } from 'react';
+import { useDocument } from '../hooks/useDocument';
+import { useZones } from '../hooks/useZones';
+import { useConfidenceUpdates } from '../hooks/useConfidenceUpdates';
+import { useUndoRedo } from '../hooks/useUndoRedo';
 import { createPortal } from 'react-dom';
 import { UploadZone } from './upload/UploadZone';
 import { DualPaneViewer } from './viewer/DualPaneViewer';
+import { ExportDialog } from './export/ExportDialog';
+import { UserPresence } from './collaboration/UserPresence';
+import { CollaborativeZoneEditor } from './collaboration/CollaborativeZoneEditor';
+import { ConfidenceAnalytics } from './confidence/ConfidenceAnalytics';
+import { BatchOverrideControls } from './override/BatchOverrideControls';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { FileText, Zap, Shield, Globe, Brain, Sparkles, ArrowLeft, GripVertical, Maximize2, RotateCw } from 'lucide-react';
+import { FileText, Zap, Shield, Globe, Brain, Sparkles, ArrowLeft, GripVertical, Maximize2, RotateCw, Download, Undo2, Redo2 } from 'lucide-react';
 
 export function DocumentUploadAndViewer() {
   const [uploadedDocument, setUploadedDocument] = useState<any>(null);
@@ -20,11 +29,42 @@ export function DocumentUploadAndViewer() {
   const [paneRatio, setPaneRatio] = useState(0.6); // 60% left, 40% right
   const [isDragging, setIsDragging] = useState(false);
   const [screenDimensions, setScreenDimensions] = useState({ width: 1280, height: 720 });
+  const [showExportDialog, setShowExportDialog] = useState(false);
+  const [collaborationEnabled, setCollaborationEnabled] = useState(false);
+  const [showConfidenceAnalytics, setShowConfidenceAnalytics] = useState(false);
+  const [showBatchOverrides, setShowBatchOverrides] = useState(false);
 
-  // Advanced viewer state
-  const [zones, setZones] = useState<any[]>([]);
+  // Advanced viewer state using hooks
+  const { 
+    zones, 
+    setZones, 
+    selectedZone, 
+    setSelectedZone,
+    addZone,
+    updateZone,
+    deleteZone 
+  } = useZones(uploadedDocument?.documentId);
+  
+  const { 
+    documentData, 
+    isLoading: documentLoading, 
+    error: documentError 
+  } = useDocument(uploadedDocument?.documentId);
+  
+  const { 
+    confidence, 
+    updateConfidence 
+  } = useConfidenceUpdates(uploadedDocument?.documentId);
+  
+  const { 
+    canUndo, 
+    canRedo, 
+    undo, 
+    redo, 
+    pushState 
+  } = useUndoRedo();
+  
   const [extractedContent, setExtractedContent] = useState<any[]>([]);
-  const [selectedZone, setSelectedZone] = useState<string | null>(null);
 
   // Handle draggable divider
   React.useEffect(() => {
@@ -316,6 +356,37 @@ export function DocumentUploadAndViewer() {
                 <ArrowLeft className="w-4 h-4 mr-2" />
                 Back to Analysis
               </Button>
+              <Button
+                onClick={() => setCollaborationEnabled(!collaborationEnabled)}
+                variant="ghost"
+                className={`backdrop-blur-sm border border-white/20 dark:border-white/10 ${
+                  collaborationEnabled 
+                    ? 'bg-green-500/20 hover:bg-green-500/30 text-green-700 dark:text-green-300' 
+                    : 'bg-white/10 dark:bg-black/10 hover:bg-white/20 dark:hover:bg-black/20'
+                }`}
+              >
+                {collaborationEnabled ? '👥 Collaboration ON' : '👤 Enable Collaboration'}
+              </Button>
+              <div className="flex items-center gap-2">
+                <Button
+                  onClick={undo}
+                  disabled={!canUndo}
+                  variant="ghost"
+                  size="sm"
+                  className="backdrop-blur-sm bg-white/10 dark:bg-black/10 border border-white/20 dark:border-white/10 hover:bg-white/20 dark:hover:bg-black/20 disabled:opacity-50"
+                >
+                  <Undo2 className="w-4 h-4" />
+                </Button>
+                <Button
+                  onClick={redo}
+                  disabled={!canRedo}
+                  variant="ghost"
+                  size="sm"
+                  className="backdrop-blur-sm bg-white/10 dark:bg-black/10 border border-white/20 dark:border-white/10 hover:bg-white/20 dark:hover:bg-black/20 disabled:opacity-50"
+                >
+                  <Redo2 className="w-4 h-4" />
+                </Button>
+              </div>
               <div>
                 <h1 className="text-2xl font-bold bg-gradient-to-r from-blue-600 via-purple-600 to-indigo-600 dark:from-blue-400 dark:via-purple-400 dark:to-indigo-400 bg-clip-text text-transparent">
                   🔍 Adaptive Full-Screen PDF Viewer
@@ -328,8 +399,11 @@ export function DocumentUploadAndViewer() {
                 </p>
               </div>
             </div>
-            <div className="backdrop-blur-sm bg-green-500/20 border border-green-500/30 text-green-700 dark:text-green-300 px-3 py-1 rounded-lg text-sm font-medium">
-              ✅ Maximum Screen Utilization
+            <div className="flex items-center gap-2">
+              {collaborationEnabled && <UserPresence />}
+              <div className="backdrop-blur-sm bg-green-500/20 border border-green-500/30 text-green-700 dark:text-green-300 px-3 py-1 rounded-lg text-sm font-medium">
+                ✅ Maximum Screen Utilization
+              </div>
             </div>
           </div>
         </div>
@@ -409,6 +483,17 @@ export function DocumentUploadAndViewer() {
               </div>
             </div>
             <div className="flex-1 p-6 overflow-y-auto">
+              {collaborationEnabled && selectedZone && zones.find(z => z.id === selectedZone) && (
+                <CollaborativeZoneEditor
+                  zone={zones.find(z => z.id === selectedZone)!}
+                  documentId={uploadedDocument.documentId}
+                  onUpdate={(updates) => {
+                    // Push current state for undo/redo
+                    pushState({ zones, selectedZone });
+                    updateZone(selectedZone!, updates);
+                  }}
+                />
+              )}
               {analysisData?.elements?.length > 0 ? (
                 <div className="space-y-4">
                   {analysisData.elements.map((element: any, index: number) => (
@@ -634,6 +719,25 @@ export function DocumentUploadAndViewer() {
                           >
                             Open Adaptive Full-Screen Viewer
                           </Button>
+                          <Button 
+                            onClick={() => setShowExportDialog(true)}
+                            className="bg-gradient-to-r from-green-500 to-emerald-600 text-white hover:from-green-600 hover:to-emerald-700"
+                          >
+                            <Download className="w-4 h-4 mr-2" />
+                            Export Results
+                          </Button>
+                          <Button 
+                            onClick={() => setShowConfidenceAnalytics(true)}
+                            className="bg-gradient-to-r from-orange-500 to-amber-600 text-white hover:from-orange-600 hover:to-amber-700"
+                          >
+                            📊 Analytics Dashboard
+                          </Button>
+                          <Button 
+                            onClick={() => setShowBatchOverrides(true)}
+                            className="bg-gradient-to-r from-violet-500 to-purple-600 text-white hover:from-violet-600 hover:to-purple-700"
+                          >
+                            ⚡ Batch Override
+                          </Button>
                         </div>
                       </div>
                       <Button 
@@ -741,6 +845,69 @@ export function DocumentUploadAndViewer() {
           </TabsContent>
         </Tabs>
       </div>
+
+      {/* Export Dialog */}
+      {showExportDialog && uploadedDocument && (
+        <ExportDialog
+          open={showExportDialog}
+          onOpenChange={setShowExportDialog}
+          documentId={uploadedDocument.documentId}
+          zones={zones}
+          pages={[1]} // Default to first page, could be dynamic
+        />
+      )}
+
+      {/* Confidence Analytics */}
+      {showConfidenceAnalytics && analysisData && (
+        <div className="fixed inset-0 z-50 bg-black/50 backdrop-blur-sm flex items-center justify-center p-4">
+          <div className="bg-white dark:bg-slate-900 rounded-xl shadow-2xl p-6 max-w-4xl w-full max-h-[90vh] overflow-y-auto">
+            <div className="flex items-center justify-between mb-6">
+              <h2 className="text-2xl font-bold">📊 Confidence Analytics Dashboard</h2>
+              <Button 
+                onClick={() => setShowConfidenceAnalytics(false)}
+                variant="ghost"
+              >
+                ✕ Close
+              </Button>
+            </div>
+            <ConfidenceAnalytics
+              zones={zones}
+              results={analysisData.elements?.map((element: any, index: number) => ({
+                id: `result_${index}`,
+                content: element.text,
+                confidence: element.confidence || 0.5,
+                type: element.type || 'text'
+              })) || []}
+              confidenceScores={new Map()}
+            />
+          </div>
+        </div>
+      )}
+
+      {/* Batch Override Controls */}
+      {showBatchOverrides && (
+        <div className="fixed inset-0 z-50 bg-black/50 backdrop-blur-sm flex items-center justify-center p-4">
+          <div className="bg-white dark:bg-slate-900 rounded-xl shadow-2xl p-6 max-w-4xl w-full max-h-[90vh] overflow-y-auto">
+            <div className="flex items-center justify-between mb-6">
+              <h2 className="text-2xl font-bold">⚡ Batch Override Controls</h2>
+              <Button 
+                onClick={() => setShowBatchOverrides(false)}
+                variant="ghost"
+              >
+                ✕ Close
+              </Button>
+            </div>
+            <BatchOverrideControls
+              zones={zones}
+              onBatchUpdate={(updates) => {
+                // Push current state for undo/redo
+                pushState({ zones });
+                setZones(zones.map(zone => ({ ...zone, ...updates })));
+              }}
+            />
+          </div>
+        </div>
+      )}
     </div>
   );
 } 
