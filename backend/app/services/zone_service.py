@@ -32,12 +32,17 @@ class ZoneService:
         self,
         db_pool: Optional[asyncpg.Pool] = None,
         supabase_client: Optional[Client] = None,
-        redis_client: Optional[redis.Redis] = None
+        redis_client: Optional[redis.Redis] = None,
+        connection_manager: Optional[Any] = None,
+        conflict_resolver: Optional[Any] = None
     ):
         self.db_pool = db_pool
         self.supabase = supabase_client
         self.redis = redis_client
         self._demo_zones = {}  # For demo mode
+        self.connection_manager = connection_manager
+        self.conflict_resolver = conflict_resolver
+        self._zone_versions = {}  # Track zone versions for optimistic locking
         
     async def get_zones_by_document(
         self,
@@ -286,6 +291,144 @@ class ZoneService:
         except Exception as e:
             logger.error(f"Error updating zone {zone_id}: {str(e)}")
             raise
+    
+    async def update_zone_collaborative(
+        self,
+        zone_id: UUID,
+        zone_update: ZoneUpdate,
+        user_id: str,
+        client_id: str,
+        version: Optional[int] = None
+    ) -> Tuple[ZoneResponse, Optional[Dict[str, Any]]]:
+        """Update a zone with collaborative features and conflict detection"""
+        try:
+            # Get existing zone
+            existing_zone = await self._get_zone_internal(zone_id)
+            if not existing_zone:
+                raise ZoneNotFoundError(zone_id)
+            
+            # Check for conflicts if we have a conflict resolver
+            conflict = None
+            if self.conflict_resolver and version is not None:
+                current_version = self._zone_versions.get(str(zone_id), 0)
+                
+                if version < current_version:
+                    # Detect conflict
+                    local_changes = zone_update.model_dump(exclude_none=True)
+                    
+                    conflict = self.conflict_resolver.detect_conflict(
+                        str(zone_id),
+                        version,
+                        current_version,
+                        local_changes,
+                        {}  # Would need to track remote changes
+                    )
+                    
+                    if conflict:
+                        # Try to resolve
+                        from ..websocket.conflict_resolver import ConflictResolutionStrategy
+                        resolved_changes, requires_intervention = self.conflict_resolver.resolve_conflict(
+                            conflict,
+                            local_changes,
+                            {},
+                            ConflictResolutionStrategy.MERGE
+                        )
+                        
+                        if requires_intervention:
+                            # Return conflict info without updating
+                            return None, {
+                                "conflict": conflict,
+                                "local_changes": local_changes,
+                                "current_version": current_version,
+                                "requires_intervention": True
+                            }
+                        
+                        # Use resolved changes
+                        zone_update = ZoneUpdate(**resolved_changes)
+            
+            # Perform the update
+            updated_zone = await self.update_zone(zone_id, zone_update)
+            
+            # Update version
+            new_version = self._zone_versions.get(str(zone_id), 0) + 1
+            self._zone_versions[str(zone_id)] = new_version
+            
+            # Broadcast update if we have a connection manager
+            if self.connection_manager:
+                await self.connection_manager.broadcast_zone_update(
+                    client_id,
+                    str(existing_zone.document_id),
+                    str(zone_id),
+                    "update",
+                    zone_update.model_dump(exclude_none=True),
+                    new_version
+                )
+            
+            # Record conflict resolution if there was one
+            if self.conflict_resolver and conflict:
+                self.conflict_resolver.record_conflict(
+                    str(zone_id),
+                    conflict["type"],
+                    [user_id],
+                    {"strategy": "merge", "version": new_version}
+                )
+            
+            return updated_zone, conflict
+            
+        except Exception as e:
+            logger.error(f"Error in collaborative zone update {zone_id}: {str(e)}")
+            raise
+    
+    async def lock_zone(self, zone_id: UUID, user_id: str) -> bool:
+        """Lock a zone for exclusive editing"""
+        if self.conflict_resolver:
+            success = self.conflict_resolver.acquire_lock(str(zone_id), user_id)
+            
+            if success and self.connection_manager:
+                # Broadcast lock event
+                zone = await self._get_zone_internal(zone_id)
+                if zone:
+                    from ..websocket.events import ZoneCollaborationEvent, EventType
+                    
+                    await self.connection_manager.broadcast_to_room(
+                        f"document_{zone.document_id}",
+                        ZoneCollaborationEvent(
+                            event_type=EventType.ZONE_LOCKED,
+                            document_id=str(zone.document_id),
+                            zone_id=str(zone_id),
+                            user_id=user_id,
+                            action="lock",
+                            locked_by=user_id
+                        )
+                    )
+            
+            return success
+        return True
+    
+    async def unlock_zone(self, zone_id: UUID, user_id: str) -> bool:
+        """Unlock a zone"""
+        if self.conflict_resolver:
+            success = self.conflict_resolver.release_lock(str(zone_id), user_id)
+            
+            if success and self.connection_manager:
+                # Broadcast unlock event
+                zone = await self._get_zone_internal(zone_id)
+                if zone:
+                    from ..websocket.events import ZoneCollaborationEvent, EventType
+                    
+                    await self.connection_manager.broadcast_to_room(
+                        f"document_{zone.document_id}",
+                        ZoneCollaborationEvent(
+                            event_type=EventType.ZONE_UNLOCKED,
+                            document_id=str(zone.document_id),
+                            zone_id=str(zone_id),
+                            user_id=user_id,
+                            action="unlock"
+                        )
+                    )
+            
+            return success
+        return True
     
     async def delete_zone(self, zone_id: UUID) -> bool:
         """Delete a zone"""

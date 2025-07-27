@@ -11,7 +11,7 @@ import logging
 from datetime import datetime
 from collections import defaultdict
 
-from app.websocket.events import EventType, WebSocketEvent
+from app.websocket.events import EventType
 from app.websocket.queue import MessageQueue
 
 logger = logging.getLogger(__name__)
@@ -86,9 +86,9 @@ class ConnectionManager:
             # Send connection confirmation
             await self.send_personal_message(
                 client_id,
-                WebSocketEvent(
-                    type=EventType.CONNECTION_ESTABLISHED,
-                    data={
+                {
+                    "type": EventType.CONNECTION_ESTABLISHED.value,
+                    "data": {
                         "client_id": client_id,
                         "user_id": user_id,
                         "server_time": datetime.utcnow().isoformat(),
@@ -101,7 +101,7 @@ class ConnectionManager:
                             "conflict_resolution"
                         ]
                     }
-                )
+                }
             )
             
             logger.info(f"WebSocket connected: {client_id} (user: {user_id})")
@@ -130,7 +130,7 @@ class ConnectionManager:
         except Exception as e:
             logger.error(f"Error disconnecting WebSocket {client_id}: {e}")
     
-    async def send_personal_message(self, client_id: str, event: WebSocketEvent) -> bool:
+    async def send_personal_message(self, client_id: str, event: Any) -> bool:
         """Send message to specific client"""
         try:
             if client_id not in self.active_connections:
@@ -138,7 +138,16 @@ class ConnectionManager:
                 return False
             
             websocket = self.active_connections[client_id]
-            message_data = event.to_dict()
+            
+            # Handle different message types
+            if hasattr(event, 'to_dict'):
+                message_data = event.to_dict()
+            elif hasattr(event, 'model_dump'):
+                message_data = event.model_dump()
+            elif isinstance(event, dict):
+                message_data = event
+            else:
+                message_data = {"data": event}
             
             # Add message to queue for reliability
             message_id = self.message_queue.add_message(message_data, client_id)
@@ -160,7 +169,7 @@ class ConnectionManager:
             self.connection_stats["messages_failed"] += 1
             return False
     
-    async def broadcast_to_user(self, user_id: str, event: WebSocketEvent) -> int:
+    async def broadcast_to_user(self, user_id: str, event: Any) -> int:
         """Send message to all connections for a user"""
         sent_count = 0
         client_ids = self.user_connections.get(user_id, set()).copy()
@@ -171,7 +180,7 @@ class ConnectionManager:
         
         return sent_count
     
-    async def broadcast_to_room(self, room_id: str, event: WebSocketEvent, exclude_client: Optional[str] = None) -> int:
+    async def broadcast_to_room(self, room_id: str, event: Any, exclude_client: Optional[str] = None) -> int:
         """Send message to all clients in a room"""
         sent_count = 0
         client_ids = self.rooms.get(room_id, set()).copy()
@@ -183,7 +192,7 @@ class ConnectionManager:
         
         return sent_count
     
-    async def broadcast_to_all(self, event: WebSocketEvent, exclude_client: Optional[str] = None) -> int:
+    async def broadcast_to_all(self, event: Any, exclude_client: Optional[str] = None) -> int:
         """Send message to all connected clients"""
         sent_count = 0
         client_ids = list(self.active_connections.keys())
@@ -231,26 +240,26 @@ class ConnectionManager:
                 room_members = self.get_room_user_details(room_id)
                 await self.send_personal_message(
                     client_id,
-                    WebSocketEvent(
-                        type=EventType.USER_PRESENCE_UPDATE,
-                        data={
+                    {
+                        "type": EventType.USER_PRESENCE_UPDATE.value,
+                        "data": {
                             "room_id": room_id,
                             "members": room_members
                         }
-                    )
+                    }
                 )
             else:
                 # Standard room join notification
                 await self.broadcast_to_room(
                     room_id,
-                    WebSocketEvent(
-                        type=EventType.USER_JOINED_ROOM,
-                        data={
+                    {
+                        "type": EventType.USER_JOINED_ROOM.value,
+                        "data": {
                             "client_id": client_id,
                             "room_id": room_id,
                             "user_id": metadata.get("user_id")
                         }
-                    ),
+                    },
                     exclude_client=client_id
                 )
             
@@ -289,14 +298,14 @@ class ConnectionManager:
                     # Notify remaining room members
                     await self.broadcast_to_room(
                         room_id,
-                        WebSocketEvent(
-                            type=EventType.USER_LEFT_ROOM,
-                            data={
+                        {
+                            "type": EventType.USER_LEFT_ROOM.value,
+                            "data": {
                                 "client_id": client_id,
                                 "room_id": room_id,
                                 "user_id": metadata.get("user_id")
                             }
-                        )
+                        }
                     )
             
             logger.debug(f"Client {client_id} left room {room_id}")
@@ -309,10 +318,10 @@ class ConnectionManager:
             # Send pong response
             await self.send_personal_message(
                 client_id,
-                WebSocketEvent(
-                    type=EventType.PONG,
-                    data={"timestamp": datetime.utcnow().isoformat()}
-                )
+                {
+                    "type": EventType.PONG.value,
+                    "data": {"timestamp": datetime.utcnow().isoformat()}
+                }
             )
             return True
         return False
@@ -396,14 +405,14 @@ class ConnectionManager:
                         break
             
             # Broadcast to all relevant rooms
-            event = WebSocketEvent(
-                type=EventType.USER_STATUS_CHANGED,
-                data={
+            event = {
+                "type": EventType.USER_STATUS_CHANGED.value,
+                "data": {
                     "user_id": user_id,
                     "status": status,
                     **details
                 }
-            )
+            }
             
             for room_id in user_rooms:
                 await self.broadcast_to_room(room_id, event)

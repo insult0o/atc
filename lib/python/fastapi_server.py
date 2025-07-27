@@ -346,11 +346,19 @@ async def run_performance_benchmark():
         raise HTTPException(status_code=500, detail=f"Benchmark failed: {str(e)}")
 
 if __name__ == "__main__":
+    import argparse
+    
+    # Parse command line arguments
+    parser = argparse.ArgumentParser(description='PDF Processing Server')
+    parser.add_argument('--port', type=int, default=8001, help='Port to run the server on (default: 8001)')
+    parser.add_argument('--host', type=str, default='0.0.0.0', help='Host to bind to (default: 0.0.0.0)')
+    args = parser.parse_args()
+    
     # Start the high-performance server
     uvicorn.run(
         "fastapi_server:app",
-        host="0.0.0.0",
-        port=8001,
+        host=args.host,
+        port=args.port,
         log_level="info",
         workers=1,  # Use 1 worker to maintain state
         loop="asyncio"
