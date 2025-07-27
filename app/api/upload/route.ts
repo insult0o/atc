@@ -57,14 +57,17 @@ export async function POST(request: Request) {
     // Step 1: Create document in backend database
     try {
       const documentData = {
-        filename: file.name,
-        file_size: file.size,
-        file_path: filePath,
+        filename: filename, // Use stored filename
+        original_filename: file.name, // Original file name
+        file_size_bytes: file.size, // Backend expects file_size_bytes
+        mime_type: file.type || 'application/pdf', // Backend expects mime_type
+        storage_path: filePath, // Backend expects storage_path
+        uploaded_by: "anonymous",
         metadata: {
-          original_filename: file.name,
           stored_filename: filename,
           file_type: file.type,
-          uploaded_at: new Date().toISOString()
+          uploaded_at: new Date().toISOString(),
+          upload_method: "frontend_api"
         }
       };
 
