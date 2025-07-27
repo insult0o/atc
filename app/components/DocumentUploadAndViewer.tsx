@@ -3,6 +3,7 @@
 import React, { useState } from 'react';
 import { createPortal } from 'react-dom';
 import { UploadZone } from './upload/UploadZone';
+import { DualPaneViewer } from './viewer/DualPaneViewer';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -19,6 +20,11 @@ export function DocumentUploadAndViewer() {
   const [paneRatio, setPaneRatio] = useState(0.6); // 60% left, 40% right
   const [isDragging, setIsDragging] = useState(false);
   const [screenDimensions, setScreenDimensions] = useState({ width: 1280, height: 720 });
+
+  // Advanced viewer state
+  const [zones, setZones] = useState<any[]>([]);
+  const [extractedContent, setExtractedContent] = useState<any[]>([]);
+  const [selectedZone, setSelectedZone] = useState<string | null>(null);
 
   // Handle draggable divider
   React.useEffect(() => {
@@ -238,31 +244,8 @@ export function DocumentUploadAndViewer() {
     }
   };
 
-  // Create mock zones and extracted content for dual-pane
-  const zones = [
-    {
-      id: 'zone_1',
-      coordinates: { x: 50, y: 100, width: 300, height: 40 },
-      confidence: 0.98,
-      type: 'header' as const,
-      textContent: 'Annual Financial Report 2024',
-      assignedTool: 'advanced_ocr',
-      status: 'completed' as const,
-      lastUpdated: new Date().toISOString()
-    },
-    {
-      id: 'zone_2', 
-      coordinates: { x: 50, y: 160, width: 400, height: 80 },
-      confidence: 0.95,
-      type: 'text' as const,
-      textContent: 'This comprehensive financial report presents...',
-      assignedTool: 'nlp_processor',
-      status: 'completed' as const,
-      lastUpdated: new Date().toISOString()
-    }
-  ];
-
-  const extractedContent = analysisData?.elements?.map((element: any, index: number) => ({
+  // Use zones and extractedContent from state (created from processing data)
+  const contentData = analysisData?.elements?.map((element: any, index: number) => ({
     id: `content_${index}`,
     type: element.type,
     content: element.text,
