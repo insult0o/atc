@@ -273,7 +273,7 @@ export function DualPaneViewer({
   const paneStyles = getPaneStyles();
 
   return (
-    <div className="dual-pane-viewer flex flex-col h-full bg-gradient-to-br from-slate-50 via-blue-50/30 to-indigo-50/20 dark:from-slate-950 dark:via-blue-950/30 dark:to-indigo-950/20">
+    <div className="dual-pane-viewer flex flex-col h-full bg-gradient-to-br from-slate-50 via-blue-50/30 to-indigo-50/20 dark:from-slate-950 dark:via-blue-950/30 dark:to-indigo-950/20 p-4">
       {/* Toolbar */}
       <div className="viewer-toolbar flex items-center justify-between p-4 backdrop-blur-xl bg-white/10 dark:bg-black/10 border-b border-white/20 dark:border-white/10">
         <div className="flex items-center gap-2">
