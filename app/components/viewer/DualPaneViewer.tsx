@@ -3,6 +3,9 @@
 import React, { useState, useCallback, useRef, useEffect } from 'react';
 import { PDFViewer } from './PDFViewer';
 import { ExtractedContentViewer } from './ExtractedContentViewer';
+import { RichTextEditor } from '../editor/RichTextEditor';
+import { ZoneCreator } from '../zones/ZoneCreator';
+import { ZoneManager } from '../zones/ZoneManager';
 import { ZoneHighlighter } from './ZoneHighlighter';
 import { PDFHighlighter } from './PDFHighlighter';
 import { ContentHighlighter } from './ContentHighlighter';
@@ -10,6 +13,7 @@ import { useSynchronizedScroll } from '../../hooks/useSynchronizedScroll';
 import { useViewerPerformance } from '../../hooks/useViewerPerformance';
 import { CoordinateMapper } from '../../../lib/highlighting/coordinate-mapper';
 import { Button } from '../../../components/ui/button';
+import { Badge } from '../../../components/ui/badge';
 import { 
   Maximize2, 
   Minimize2, 
@@ -150,6 +154,12 @@ export function DualPaneViewer({
     setViewerState(prev => ({ ...prev, selectedZone: zoneId }));
     onZoneSelect?.(zoneId);
   }, [onZoneSelect, recordMetric]);
+
+  // Handle zone creation
+  const handleZoneCreate = useCallback((zoneData: any) => {
+    console.log('🎯 Zone created:', zoneData);
+    // Here you would typically send this to the backend
+  }, []);
 
   // Handle pane divider drag
   const handleDividerMouseDown = useCallback((e: React.MouseEvent) => {
@@ -365,7 +375,7 @@ export function DualPaneViewer({
       </div>
 
       {/* Main viewer area */}
-      <div ref={containerRef} className="viewer-container flex flex-1 relative overflow-hidden">
+      <div ref={containerRef} className="viewer-container flex flex-1 relative overflow-hidden rounded-xl shadow-2xl border border-white/20 dark:border-white/10">
         {/* Left pane - PDF Viewer */}
         <div
           ref={leftPaneRef}
@@ -377,9 +387,20 @@ export function DualPaneViewer({
             zones={zones}
             selectedZone={viewerState.selectedZone || undefined}
             onZoneSelect={handleZoneSelect}
-            onZoneCreate={() => {}} // Handled by parent
+            onZoneCreate={handleZoneCreate}
             confidenceThreshold={0.7}
           />
+          
+          {/* Zone Creation Overlay */}
+          <ZoneCreator
+            containerRef={leftPaneRef}
+            currentPage={1}
+            existingZones={[]}
+            onZoneCreate={handleZoneCreate}
+            scale={viewerState.zoomLevel}
+          />
+          
+          {/* Zone Highlighting with Type-based Colors */}
           {viewerState.highlightVisible && (
             <ZoneHighlighter
               zones={zones}
@@ -402,20 +423,38 @@ export function DualPaneViewer({
           </div>
         </div>
 
-        {/* Right pane - Extracted Content Viewer */}
+        {/* Right pane - Rich Text Editor */}
         <div
           ref={rightPaneRef}
-          className="right-pane flex-col overflow-hidden backdrop-blur-xl bg-white/5 dark:bg-black/5"
+          className="right-pane flex flex-col overflow-hidden backdrop-blur-xl bg-white/5 dark:bg-black/5"
           style={paneStyles.right}
         >
-          <ExtractedContentViewer
-            content={extractedContent}
-            zones={zones}
-            selectedZone={viewerState.selectedZone}
-            highlightVisible={viewerState.highlightVisible}
-            onZoneSelect={handleZoneSelect}
-            onContentEdit={onContentEdit}
-          />
+          {/* Editor Header */}
+          <div className="editor-header p-4 border-b border-white/20 dark:border-white/10">
+            <h3 className="text-lg font-semibold text-slate-800 dark:text-slate-200 flex items-center gap-2">
+              📝 Rich Content Editor
+              <Badge variant="outline" className="text-xs">
+                {extractedContent.length} zones
+              </Badge>
+            </h3>
+            <p className="text-sm text-slate-600 dark:text-slate-400 mt-1">
+              Edit extracted content with full rich text capabilities
+            </p>
+          </div>
+          
+          {/* Rich Text Editor */}
+          <div className="flex-1 overflow-hidden">
+            <RichTextEditor
+              content={extractedContent}
+              onSave={(content) => {
+                console.log('💾 Content saved:', content);
+              }}
+              onExport={(format) => {
+                console.log('📤 Exporting as:', format);
+              }}
+              height="100%"
+            />
+          </div>
         </div>
       </div>
 
