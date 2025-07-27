@@ -6,6 +6,8 @@ from fastapi import APIRouter, Depends, UploadFile, File, HTTPException, status,
 from fastapi.responses import JSONResponse
 from typing import List, Optional
 from uuid import UUID
+from datetime import datetime
+import uuid
 import logging
 
 from app.models.document import (
@@ -13,15 +15,50 @@ from app.models.document import (
     DocumentUploadResponse, DocumentListResponse, DocumentStatsResponse
 )
 from app.models.base import SuccessResponse, PaginatedResponse
+from app.models.export import ExportResponse
 from app.services.document_service import DocumentService
+from app.services.export_service import ExportService
 from app.middleware.errors import (
     DocumentNotFoundError, InvalidFileTypeError, FileSizeExceededError
 )
 from app.middleware.logging import RequestContextLogger
-from app.dependencies import get_document_service
+from app.dependencies import get_document_service, get_export_service
 
 logger = logging.getLogger(__name__)
 router = APIRouter()
+
+@router.post("", response_model=DocumentResponse)
+async def create_document(
+    document_data: DocumentCreate,
+    document_service: DocumentService = Depends(get_document_service)
+):
+    """
+    Create a new document record with JSON data
+    
+    - **document_data**: Document information
+    - Returns created document metadata
+    """
+    try:
+        # Create document using the service
+        document = await document_service.create_document(document_data)
+        
+        logger.info(
+            f"Document created successfully: {document.id}",
+            extra={
+                "document_id": str(document.id),
+                "filename": document.filename,
+                "file_size": document.file_size
+            }
+        )
+        
+        return document
+    
+    except Exception as e:
+        logger.error(f"Error creating document: {str(e)}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Failed to create document"
+        )
 
 @router.post("/upload", response_model=DocumentUploadResponse)
 async def upload_document(
@@ -59,7 +96,7 @@ async def upload_document(
             f"Document uploaded successfully: {result.document_id}",
             extra={
                 "document_id": str(result.document_id),
-                "filename": result.filename,
+                "document_filename": result.filename,
                 "file_size": result.file_size_bytes
             }
         )
@@ -69,6 +106,62 @@ async def upload_document(
     except Exception as e:
         logger.error(f"Error uploading document: {str(e)}")
         raise
+
+@router.post("/test-upload", response_model=DocumentUploadResponse)
+async def test_upload():
+    """
+    Test endpoint to debug upload response creation
+    """
+    from datetime import UTC
+    try:
+        response = DocumentUploadResponse(
+            document_id=uuid.uuid4(),
+            filename="test.pdf",
+            file_size_bytes=1000,
+            file_size_human="1.0 KB",
+            page_count=1,
+            upload_timestamp=datetime.now(UTC),
+            status=DocumentStatus.UPLOADED,
+            storage_url="/demo/test",
+            demo_mode=True
+        )
+        return response
+    except Exception as e:
+        logger.error(f"Error in test upload: {str(e)}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Test failed: {str(e)}"
+        )
+
+@router.post("/minimal-upload")
+async def minimal_upload(file: UploadFile = File(...)):
+    """
+    Minimal upload test to isolate KeyError
+    """
+    try:
+        file_content = await file.read()
+        file_size = len(file_content)
+        
+        from datetime import UTC
+        response_data = {
+            "document_id": uuid.uuid4(),
+            "filename": file.filename,
+            "file_size_bytes": file_size,
+            "file_size_human": f"{file_size} B",
+            "page_count": 1,
+            "upload_timestamp": datetime.now(UTC),
+            "status": "uploaded",
+            "storage_url": "/demo/test",
+            "demo_mode": True,
+            "error": None
+        }
+        
+        logger.info(f"Response data: {response_data}")
+        return response_data
+        
+    except Exception as e:
+        logger.error(f"Error in minimal upload: {str(e)}")
+        return {"error": str(e)}
 
 @router.get("/{document_id}", response_model=DocumentResponse)
 async def get_document(
@@ -352,4 +445,26 @@ async def bulk_delete_documents(
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail="Failed to delete documents"
+        )
+
+@router.get("/{document_id}/exports", response_model=List[ExportResponse])
+async def get_document_exports(
+    document_id: UUID,
+    export_service: ExportService = Depends(get_export_service)
+):
+    """
+    Get all exports for a specific document
+    
+    - **document_id**: Document ID
+    - Returns list of all exports for the document
+    """
+    try:
+        exports = await export_service.get_document_exports(document_id)
+        return exports
+    
+    except Exception as e:
+        logger.error(f"Error getting exports for document {document_id}: {str(e)}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Failed to get document exports"
         ) 

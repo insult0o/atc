@@ -95,6 +95,8 @@ class DocumentUploadResponse(BaseModel):
     upload_timestamp: datetime = Field(..., description="Upload timestamp")
     status: DocumentStatus = Field(..., description="Document status")
     storage_url: Optional[str] = Field(None, description="Storage URL for access")
+    demo_mode: Optional[bool] = Field(False, description="Whether this is a demo mode response")
+    error: Optional[str] = Field(None, description="Error message if any")
 
 class DocumentListResponse(BaseModel):
     """Response for document list queries"""

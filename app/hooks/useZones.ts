@@ -73,6 +73,33 @@ export type ZoneEventType =
   | 'collaborator_left'
   | 'cursor_moved';
 
+// Helper function to convert API zone to frontend format
+function convertApiZoneToFrontend(apiZone: any): Zone {
+  return {
+    id: apiZone.id,
+    coordinates: apiZone.coordinates,
+    contentType: apiZone.zone_type,
+    confidence: apiZone.confidence,
+    pageNumber: apiZone.page_number,
+    status: apiZone.status,
+    userModified: apiZone.metadata?.userModified || false,
+    lastModified: new Date(apiZone.updated_at),
+    characteristics: apiZone.metadata?.characteristics || {
+      textDensity: 0.5,
+      lineSpacing: 12,
+      wordSpacing: 4,
+      fontSizes: [12],
+      hasStructure: false,
+      hasImages: false,
+      complexity: 'medium',
+      readingOrder: 1
+    },
+    fallbackTools: apiZone.metadata?.fallbackTools || [],
+    textContent: apiZone.content,
+    assignedTool: apiZone.metadata?.assignedTool
+  };
+}
+
 // Real-time zone management hook
 export function useZones(options: UseZonesOptions) {
   const {
@@ -180,11 +207,12 @@ export function useZones(options: UseZonesOptions) {
         zones = await persistenceRef.current.loadZones(documentId);
       } else {
         // Fallback to API
-        const response = await fetch(`/api/documents/${documentId}/zones`);
+        const response = await fetch(`/api/v1/documents/${documentId}/zones`);
         if (!response.ok) {
           throw new Error(`Failed to load zones: ${response.statusText}`);
         }
-        zones = await response.json();
+        const data = await response.json();
+        zones = (data.zones || []).map(convertApiZoneToFrontend);
       }
 
       setState(prev => ({
@@ -213,15 +241,30 @@ export function useZones(options: UseZonesOptions) {
       if (enablePersistence && persistenceRef.current) {
         await persistenceRef.current.saveZones(documentId, state.zones);
       } else {
-        // Fallback to API
-        const response = await fetch(`/api/documents/${documentId}/zones`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(state.zones)
-        });
+        // Fallback to API - save each zone individually
+        for (const zone of state.zones) {
+          if (zone.userModified) {
+            const response = await fetch(`/api/v1/zones/${zone.id}`, {
+              method: 'PUT',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                zone_type: zone.contentType,
+                content: zone.textContent,
+                confidence: zone.confidence,
+                status: zone.status,
+                coordinates: zone.coordinates,
+                metadata: {
+                  userModified: zone.userModified,
+                  assignedTool: zone.assignedTool,
+                  characteristics: zone.characteristics
+                }
+              })
+            });
 
-        if (!response.ok) {
-          throw new Error(`Failed to save zones: ${response.statusText}`);
+            if (!response.ok) {
+              throw new Error(`Failed to save zone ${zone.id}: ${response.statusText}`);
+            }
+          }
         }
       }
 
@@ -462,50 +505,67 @@ export function useZones(options: UseZonesOptions) {
   }, [enableCollaboration]);
 
   // Zone manipulation functions
-  const createZone = useCallback((zoneData: Partial<Zone>) => {
-    const newZone: Zone = {
-      id: `zone_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
-      coordinates: { x: 0, y: 0, width: 100, height: 100 },
-      contentType: 'text',
-      confidence: 0.8,
-      pageNumber: 1,
-      status: 'detected',
-      userModified: true,
-      lastModified: new Date(),
-      characteristics: {
-        textDensity: 0.5,
-        lineSpacing: 12,
-        wordSpacing: 4,
-        fontSizes: [12],
-        hasStructure: false,
-        hasImages: false,
-        complexity: 'medium',
-        readingOrder: 1
-      },
-      fallbackTools: [],
-      ...zoneData
-    };
-
-    setState(prev => ({
-      ...prev,
-      zones: [...prev.zones, newZone],
-      hasUnsavedChanges: true,
-      lastModified: new Date()
-    }));
-
-    // Broadcast to other collaborators
-    if (enableRealtime && isConnected) {
-      sendMessage({
-        type: 'zone_created',
-        data: {
-          zone: newZone,
-          author: getCurrentUser().id
-        }
+  const createZone = useCallback(async (zoneData: Partial<Zone>) => {
+    try {
+      // Create zone via API
+      const response = await fetch(`/api/v1/documents/${documentId}/zones`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          document_id: documentId,
+          zone_index: state.zones.length,
+          page_number: zoneData.pageNumber || 1,
+          zone_type: zoneData.contentType || 'text',
+          coordinates: zoneData.coordinates || { x: 0, y: 0, width: 100, height: 100 },
+          content: zoneData.textContent || null,
+          confidence: zoneData.confidence || 0.8,
+          metadata: {
+            userModified: true,
+            characteristics: zoneData.characteristics || {
+              textDensity: 0.5,
+              lineSpacing: 12,
+              wordSpacing: 4,
+              fontSizes: [12],
+              hasStructure: false,
+              hasImages: false,
+              complexity: 'medium',
+              readingOrder: 1
+            }
+          }
+        })
       });
-    }
 
-    return newZone;
-  }, [enableRealtime, isConnected, sendMessage]);
+      if (!response.ok) {
+        throw new Error(`Failed to create zone: ${response.statusText}`);
+      }
+
+      const newZone = await response.json();
+      const frontendZone = convertApiZoneToFrontend(newZone);
+
+      setState(prev => ({
+        ...prev,
+        zones: [...prev.zones, frontendZone],
+        hasUnsavedChanges: false,
+        lastModified: new Date()
+      }));
+
+      // Broadcast to other collaborators
+      if (enableRealtime && isConnected) {
+        sendMessage({
+          type: 'zone_created',
+          data: {
+            zone: frontendZone,
+            author: getCurrentUser().id
+          }
+        });
+      }
+
+      return frontendZone;
+    } catch (error) {
+      console.error('Failed to create zone:', error);
+      throw error;
+    }
+  }, [documentId, state.zones.length, enableRealtime, isConnected, sendMessage]);
 
   const updateZone = useCallback((zoneId: string, updates: Partial<Zone>) => {
     setState(prev => ({
@@ -534,24 +594,38 @@ export function useZones(options: UseZonesOptions) {
     }
   }, [enableRealtime, isConnected, sendMessage]);
 
-  const deleteZone = useCallback((zoneId: string) => {
-    setState(prev => ({
-      ...prev,
-      zones: prev.zones.filter(zone => zone.id !== zoneId),
-      selectedZone: prev.selectedZone === zoneId ? null : prev.selectedZone,
-      hasUnsavedChanges: true,
-      lastModified: new Date()
-    }));
-
-    // Broadcast to other collaborators
-    if (enableRealtime && isConnected) {
-      sendMessage({
-        type: 'zone_deleted',
-        data: {
-          zoneId,
-          author: getCurrentUser().id
-        }
+  const deleteZone = useCallback(async (zoneId: string) => {
+    try {
+      // Delete zone via API
+      const response = await fetch(`/api/v1/zones/${zoneId}`, {
+        method: 'DELETE'
       });
+
+      if (!response.ok) {
+        throw new Error(`Failed to delete zone: ${response.statusText}`);
+      }
+
+      setState(prev => ({
+        ...prev,
+        zones: prev.zones.filter(zone => zone.id !== zoneId),
+        selectedZone: prev.selectedZone === zoneId ? null : prev.selectedZone,
+        hasUnsavedChanges: false,
+        lastModified: new Date()
+      }));
+
+      // Broadcast to other collaborators
+      if (enableRealtime && isConnected) {
+        sendMessage({
+          type: 'zone_deleted',
+          data: {
+            zoneId,
+            author: getCurrentUser().id
+          }
+        });
+      }
+    } catch (error) {
+      console.error('Failed to delete zone:', error);
+      throw error;
     }
   }, [enableRealtime, isConnected, sendMessage]);
 
@@ -589,127 +663,105 @@ export function useZones(options: UseZonesOptions) {
     }
   }, [updateZone, enableRealtime, isConnected, sendMessage]);
 
-  const mergeZones = useCallback((zoneIds: string[]) => {
-    const zonesToMerge = state.zones.filter(zone => zoneIds.includes(zone.id));
-    if (zonesToMerge.length < 2) return;
+  const mergeZones = useCallback(async (zoneIds: string[]) => {
+    if (zoneIds.length < 2) return;
 
-    // Calculate merged bounding box
-    const boundingBox = zonesToMerge.reduce((bounds, zone) => {
-      const coords = zone.coordinates;
-      return {
-        left: Math.min(bounds.left, coords.x),
-        top: Math.min(bounds.top, coords.y),
-        right: Math.max(bounds.right, coords.x + coords.width),
-        bottom: Math.max(bounds.bottom, coords.y + coords.height)
-      };
-    }, {
-      left: Infinity,
-      top: Infinity,
-      right: -Infinity,
-      bottom: -Infinity
-    });
-
-    // Create merged zone
-    const mergedZone: Zone = {
-      id: `merged_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
-      coordinates: {
-        x: boundingBox.left,
-        y: boundingBox.top,
-        width: boundingBox.right - boundingBox.left,
-        height: boundingBox.bottom - boundingBox.top
-      },
-      contentType: 'mixed',
-      confidence: zonesToMerge.reduce((sum, z) => sum + z.confidence, 0) / zonesToMerge.length,
-      pageNumber: zonesToMerge[0].pageNumber,
-      status: 'detected',
-      userModified: true,
-      lastModified: new Date(),
-      characteristics: {
-        textDensity: 0.5,
-        lineSpacing: 12,
-        wordSpacing: 4,
-        fontSizes: [12],
-        hasStructure: true,
-        hasImages: false,
-        complexity: 'medium',
-        readingOrder: Math.min(...zonesToMerge.map(z => z.characteristics.readingOrder))
-      },
-      fallbackTools: [],
-      textContent: zonesToMerge.map(z => z.textContent).filter(Boolean).join('\n')
-    };
-
-    setState(prev => ({
-      ...prev,
-      zones: [
-        ...prev.zones.filter(zone => !zoneIds.includes(zone.id)),
-        mergedZone
-      ],
-      selectedZone: mergedZone.id,
-      hasUnsavedChanges: true,
-      lastModified: new Date()
-    }));
-
-    // Broadcast merge
-    if (enableRealtime && isConnected) {
-      sendMessage({
-        type: 'zones_merged',
-        data: {
-          zoneIds,
-          newZone: mergedZone,
-          author: getCurrentUser().id
-        }
+    try {
+      // Merge zones via API
+      const response = await fetch('/api/v1/zones/merge', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          zone_ids: zoneIds,
+          merge_strategy: 'smart',
+          preserve_formatting: true
+        })
       });
+
+      if (!response.ok) {
+        throw new Error(`Failed to merge zones: ${response.statusText}`);
+      }
+
+      const result = await response.json();
+      const frontendZone = convertApiZoneToFrontend(result.merged_zone);
+
+      setState(prev => ({
+        ...prev,
+        zones: [
+          ...prev.zones.filter(zone => !zoneIds.includes(zone.id)),
+          frontendZone
+        ],
+        selectedZone: frontendZone.id,
+        hasUnsavedChanges: false,
+        lastModified: new Date()
+      }));
+
+      // Broadcast merge
+      if (enableRealtime && isConnected) {
+        sendMessage({
+          type: 'zones_merged',
+          data: {
+            zoneIds,
+            newZone: frontendZone,
+            author: getCurrentUser().id
+          }
+        });
+      }
+
+      return frontendZone;
+    } catch (error) {
+      console.error('Failed to merge zones:', error);
+      throw error;
     }
+  }, [enableRealtime, isConnected, sendMessage]);
 
-    return mergedZone;
-  }, [state.zones, enableRealtime, isConnected, sendMessage]);
-
-  const splitZone = useCallback((zoneId: string, splitPoints: Array<{ x: number; y: number; type: 'horizontal' | 'vertical' }>) => {
-    const originalZone = state.zones.find(zone => zone.id === zoneId);
-    if (!originalZone) return;
-
-    // Simplified split logic - in production would be more sophisticated
-    const newZones: Zone[] = splitPoints.map((point, index) => ({
-      ...originalZone,
-      id: `${zoneId}_split_${index}_${Date.now()}`,
-      coordinates: {
-        x: point.type === 'vertical' ? (index === 0 ? originalZone.coordinates.x : point.x) : originalZone.coordinates.x,
-        y: point.type === 'horizontal' ? (index === 0 ? originalZone.coordinates.y : point.y) : originalZone.coordinates.y,
-        width: point.type === 'vertical' ? 
-          (index === 0 ? point.x - originalZone.coordinates.x : originalZone.coordinates.x + originalZone.coordinates.width - point.x) :
-          originalZone.coordinates.width,
-        height: point.type === 'horizontal' ?
-          (index === 0 ? point.y - originalZone.coordinates.y : originalZone.coordinates.y + originalZone.coordinates.height - point.y) :
-          originalZone.coordinates.height
-      },
-      userModified: true,
-      lastModified: new Date()
-    }));
-
-    setState(prev => ({
-      ...prev,
-      zones: [
-        ...prev.zones.filter(zone => zone.id !== zoneId),
-        ...newZones
-      ],
-      hasUnsavedChanges: true,
-      lastModified: new Date()
-    }));
-
-    // Broadcast split
-    if (enableRealtime && isConnected) {
-      sendMessage({
-        type: 'zone_split',
-        data: {
-          originalZoneId: zoneId,
-          newZones,
-          author: getCurrentUser().id
-        }
+  const splitZone = useCallback(async (zoneId: string, splitType: 'horizontal' | 'vertical' | 'auto', splitPosition?: number) => {
+    try {
+      // Split zone via API
+      const response = await fetch(`/api/v1/zones/${zoneId}/split`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          split_type: splitType,
+          split_position: splitPosition
+        })
       });
-    }
 
-    return newZones;
-  }, [state.zones, enableRealtime, isConnected, sendMessage]);
+      if (!response.ok) {
+        throw new Error(`Failed to split zone: ${response.statusText}`);
+      }
+
+      const result = await response.json();
+      const frontendZones = result.new_zones.map(convertApiZoneToFrontend);
+
+      setState(prev => ({
+        ...prev,
+        zones: [
+          ...prev.zones.filter(zone => zone.id !== zoneId),
+          ...frontendZones
+        ],
+        hasUnsavedChanges: false,
+        lastModified: new Date()
+      }));
+
+      // Broadcast split
+      if (enableRealtime && isConnected) {
+        sendMessage({
+          type: 'zone_split',
+          data: {
+            originalZoneId: zoneId,
+            newZones: frontendZones,
+            author: getCurrentUser().id
+          }
+        });
+      }
+
+      return frontendZones;
+    } catch (error) {
+      console.error('Failed to split zone:', error);
+      throw error;
+    }
+  }, [enableRealtime, isConnected, sendMessage]);
 
   // Collaboration functions
   const moveCursor = useCallback((x: number, y: number) => {

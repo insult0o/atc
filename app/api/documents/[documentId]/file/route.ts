@@ -9,48 +9,62 @@ export async function GET(
   try {
     const { documentId } = params;
     
-    // For this demo, we'll look for files in uploads directory
-    // In a real app, you'd have a database to map documentId to filename
+    // For now, we'll look for files in the uploads directory
+    // In a real implementation, you'd look up the file path in the database
     const uploadsDir = join(process.cwd(), 'uploads');
     
-    // Extract timestamp from documentId to find the file
-    const timestamp = documentId.split('_')[1];
+    // Try to find a file that contains this document ID or timestamp
+    const { readdir } = await import('fs/promises');
+    const files = await readdir(uploadsDir);
     
-    if (!timestamp) {
-      return NextResponse.json(
-        { message: 'Invalid document ID' },
-        { status: 400 }
-      );
+    // Find files that might match this document ID
+    // Look for files with timestamp that matches or contains the document ID
+    let targetFile = null;
+    
+    // If it's a local document ID (format: local_timestamp), extract timestamp
+    if (documentId.startsWith('local_')) {
+      const timestamp = documentId.replace('local_', '');
+      targetFile = files.find(file => file.startsWith(timestamp));
+    } else {
+      // For UUID document IDs, find the most recent PDF file
+      const pdfFiles = files.filter(file => file.endsWith('.pdf'));
+      if (pdfFiles.length > 0) {
+        // Sort by timestamp (most recent first)
+        pdfFiles.sort((a, b) => {
+          const timestampA = parseInt(a.split('-')[0]) || 0;
+          const timestampB = parseInt(b.split('-')[0]) || 0;
+          return timestampB - timestampA;
+        });
+        targetFile = pdfFiles[0];
+      }
     }
     
-    // Find files that start with the timestamp
-    const { readdirSync } = require('fs');
-    const files = readdirSync(uploadsDir);
-    const matchingFile = files.find((file: string) => file.startsWith(timestamp));
-    
-    if (!matchingFile) {
+    if (!targetFile) {
       return NextResponse.json(
-        { message: 'File not found' },
+        { error: 'File not found for document ID' },
         { status: 404 }
       );
     }
     
+    const filePath = join(uploadsDir, targetFile);
+    console.log(`📄 Serving file for document ${documentId}: ${targetFile}`);
+    
     // Read and serve the file
-    const filePath = join(uploadsDir, matchingFile);
     const fileBuffer = await readFile(filePath);
     
     return new NextResponse(fileBuffer, {
+      status: 200,
       headers: {
         'Content-Type': 'application/pdf',
-        'Content-Disposition': `inline; filename="${matchingFile}"`,
-        'Cache-Control': 'no-cache',
+        'Content-Disposition': `inline; filename="${targetFile}"`,
+        'Content-Length': fileBuffer.length.toString(),
       },
     });
     
   } catch (error) {
-    console.error('File serving error:', error);
+    console.error('Error serving document file:', error);
     return NextResponse.json(
-      { message: 'File serving failed' },
+      { error: 'Failed to retrieve document file', details: error instanceof Error ? error.message : 'Unknown error' },
       { status: 500 }
     );
   }

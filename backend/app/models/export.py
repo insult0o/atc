@@ -67,6 +67,7 @@ class ExportOptions(BaseModel):
 
 class ExportRequest(BaseModel):
     """Request to start an export operation"""
+    document_id: UUID = Field(..., description="Document to export")
     export_type: ExportType = Field(..., description="Type of export")
     formats: List[ExportFormat] = Field(..., min_items=1, description="Output formats")
     selection: Optional[ExportSelection] = Field(None, description="Selection criteria")

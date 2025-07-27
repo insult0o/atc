@@ -308,6 +308,7 @@ export function ZoneSelector({
       role="listbox"
       aria-label="Zone selection"
       aria-multiselectable="true"
+      data-testid="zone-selector-container"
     >
       {currentPageZones.map((zone, index) => {
         const isSelected = selectedZones.has(zone.id);
@@ -342,6 +343,7 @@ export function ZoneSelector({
             aria-label={`Zone ${zone.id} - ${zone.contentType}`}
             data-zone-id={zone.id}
             data-zone-type={zone.contentType}
+            data-testid={`zone-selectable-${zone.id}`}
           >
             {/* Zone selection indicator */}
             {isSelected && (

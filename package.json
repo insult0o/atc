@@ -6,14 +6,25 @@
     "packages/*"
   ],
   "scripts": {
-    "dev": "next dev",
+    "dev": "PORT=3000 next dev",
+    "dev:clean": "./scripts/start-dev.sh",
+    "dev:clear-ports": "./scripts/clear-ports.sh",
+    "dev:emergency-clear": "./scripts/emergency-port-clear.sh",
     "build": "next build",
-    "start": "next start",
+    "start": "PORT=3000 next start",
     "test": "playwright test",
     "test:ui": "playwright test --ui",
     "test:debug": "playwright test --debug",
     "test:headed": "playwright test --headed",
-    "test:report": "playwright show-report"
+    "test:report": "playwright show-report",
+    "test:e2e": "playwright test",
+    "test:e2e:quick": "playwright test --project=quick-extract",
+    "test:e2e:detailed": "playwright test --project=detailed-review",
+    "test:e2e:collab": "playwright test --project=collaborative",
+    "test:e2e:batch": "playwright test --project=batch-processing",
+    "test:e2e:api": "playwright test --project=api-integration",
+    "test:e2e:visual": "playwright test --project=visual-regression",
+    "test:e2e:ci": "playwright test --reporter=list,json,html"
   },
   "dependencies": {
     "@dqbd/tiktoken": "^1.0.21",
@@ -52,10 +63,13 @@
   },
   "devDependencies": {
     "@playwright/test": "^1.54.1",
+    "@types/fs-extra": "^11.0.4",
     "@types/node": "^20.19.9",
     "@types/react": "^18.2.66",
     "@types/react-dom": "^18.3.7",
     "autoprefixer": "^10.4.18",
+    "fs-extra": "^11.3.0",
+    "msw": "^2.10.4",
     "playwright": "^1.54.1",
     "postcss": "^8.4.35",
     "typescript": "^5.4.2"

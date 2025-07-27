@@ -4,7 +4,7 @@ WebSocket event system for structured messaging
 
 from enum import Enum
 from pydantic import BaseModel, Field
-from typing import Any, Dict, Optional
+from typing import Any, Dict, Optional, List
 from datetime import datetime
 import uuid
 
@@ -23,6 +23,13 @@ class EventType(str, Enum):
     USER_LEFT_ROOM = "user_left_room"
     USER_STATUS_CHANGED = "user_status_changed"
     
+    # Collaborative events
+    USER_JOINED = "user.joined"
+    USER_LEFT = "user.left"
+    USER_PRESENCE_UPDATE = "user.presence.update"
+    USER_CURSOR_MOVED = "user.cursor.moved"
+    USER_SELECTION_CHANGED = "user.selection.changed"
+    
     # Processing events
     PROCESSING_STARTED = "processing_started"
     PROCESSING_PROGRESS = "processing_progress"
@@ -40,6 +47,12 @@ class EventType(str, Enum):
     ZONE_UPDATED = "zone_updated"
     ZONE_CORRECTED = "zone_corrected"
     
+    # Collaborative zone events
+    ZONE_CREATED = "zone.created"
+    ZONE_DELETED = "zone.deleted"
+    ZONE_LOCKED = "zone.locked"
+    ZONE_UNLOCKED = "zone.unlocked"
+    
     # Export events
     EXPORT_STARTED = "export_started"
     EXPORT_PROGRESS = "export_progress"
@@ -53,6 +66,13 @@ class EventType(str, Enum):
     DOCUMENT_UPDATED = "document_updated"
     DOCUMENT_DELETED = "document_deleted"
     DOCUMENT_VALIDATED = "document_validated"
+    DOCUMENT_PROCESSING_PROGRESS = "document.processing.progress"
+    
+    # Collaboration events
+    COLLABORATION_CONFLICT = "collaboration.conflict"
+    COLLABORATION_CONFLICT_RESOLVED = "collaboration.conflict.resolved"
+    COLLABORATION_SYNC_REQUEST = "collaboration.sync.request"
+    COLLABORATION_SYNC_RESPONSE = "collaboration.sync.response"
     
     # System events
     SYSTEM_NOTIFICATION = "system_notification"
@@ -333,4 +353,90 @@ class EventEmitter:
         user_id: str
     ):
         """Emit error event"""
-        await self.connection_manager.broadcast_to_user(user_id, error_event) 
+        await self.connection_manager.broadcast_to_user(user_id, error_event)
+
+
+class UserPresenceEvent(WebSocketEvent):
+    """User presence event for collaborative features"""
+    
+    def __init__(
+        self,
+        event_type: EventType,
+        document_id: str,
+        user_id: str,
+        user_name: str,
+        user_avatar: Optional[str] = None,
+        user_color: Optional[str] = None,
+        cursor_position: Optional[Dict[str, Any]] = None,
+        selection: Optional[Dict[str, Any]] = None,
+        **kwargs
+    ):
+        data = {
+            "document_id": document_id,
+            "user_id": user_id,
+            "user_name": user_name,
+            "user_avatar": user_avatar,
+            "user_color": user_color,
+            "cursor_position": cursor_position,
+            "selection": selection
+        }
+        super().__init__(type=event_type, data=data, **kwargs)
+
+
+class ZoneCollaborationEvent(WebSocketEvent):
+    """Zone collaboration event for real-time updates"""
+    
+    def __init__(
+        self,
+        event_type: EventType,
+        document_id: str,
+        zone_id: str,
+        user_id: str,
+        action: str,
+        zone_data: Optional[Dict[str, Any]] = None,
+        previous_data: Optional[Dict[str, Any]] = None,
+        locked_by: Optional[str] = None,
+        version: Optional[int] = None,
+        **kwargs
+    ):
+        data = {
+            "document_id": document_id,
+            "zone_id": zone_id,
+            "user_id": user_id,
+            "action": action,
+            "zone_data": zone_data,
+            "previous_data": previous_data,
+            "locked_by": locked_by,
+            "version": version
+        }
+        super().__init__(type=event_type, data=data, **kwargs)
+
+
+class CollaborationConflictEvent(WebSocketEvent):
+    """Collaboration conflict event"""
+    
+    type: EventType = EventType.COLLABORATION_CONFLICT
+    
+    def __init__(
+        self,
+        document_id: str,
+        zone_id: str,
+        conflict_type: str,
+        local_changes: Dict[str, Any],
+        remote_changes: Dict[str, Any],
+        base_version: int,
+        conflicting_users: List[str],
+        suggested_resolution: Optional[str] = None,
+        **kwargs
+    ):
+        data = {
+            "document_id": document_id,
+            "zone_id": zone_id,
+            "conflict_type": conflict_type,
+            "local_changes": local_changes,
+            "remote_changes": remote_changes,
+            "base_version": base_version,
+            "conflicting_users": conflicting_users,
+            "suggested_resolution": suggested_resolution
+        }
+        super().__init__(data=data, priority=9, **kwargs)  # High priority for conflicts 

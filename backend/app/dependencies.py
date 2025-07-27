@@ -14,6 +14,7 @@ from app.config.settings import get_settings, Settings
 from app.services.document_service import DocumentService
 from app.services.processing_service import ProcessingService
 from app.services.export_service import ExportService
+from app.services.zone_service import ZoneService
 
 logger = logging.getLogger(__name__)
 
@@ -66,7 +67,7 @@ async def get_redis_client() -> redis.Redis:
             _redis_client = None
     return _redis_client
 
-async def get_supabase_client() -> Client:
+async def get_supabase_client() -> Optional[Client]:
     """Get Supabase client"""
     global _supabase_client
     if _supabase_client is None:
@@ -78,8 +79,8 @@ async def get_supabase_client() -> Client:
             )
             logger.info("Supabase client created successfully")
         except Exception as e:
-            logger.error(f"Failed to create Supabase client: {e}")
-            raise
+            logger.warning(f"Supabase connection failed: {e}. Continuing in demo mode.")
+            _supabase_client = None
     return _supabase_client
 
 # Service dependencies
@@ -119,6 +120,18 @@ async def get_export_service() -> ExportService:
         supabase_client=supabase_client,
         redis_client=redis_client,
         document_service=document_service
+    )
+
+async def get_zone_service() -> ZoneService:
+    """Get zone service instance"""
+    db_pool = await get_database_pool()
+    supabase_client = await get_supabase_client()
+    redis_client = await get_redis_client()
+    
+    return ZoneService(
+        db_pool=db_pool,
+        supabase_client=supabase_client,
+        redis_client=redis_client
     )
 
 # Utility dependencies
@@ -390,17 +403,48 @@ async def get_message_queue() -> "MessageQueue":
 
 
 # WebSocket Cleanup Functions
+async def cleanup_database_pool():
+    """Cleanup database connection pool"""
+    global _db_pool
+    if _db_pool is not None:
+        try:
+            await _db_pool.close()
+            logger.info("Database connection pool closed")
+        except Exception as e:
+            logger.error(f"Error closing database pool: {e}")
+        finally:
+            _db_pool = None
+
+async def cleanup_redis_client():
+    """Cleanup Redis client"""
+    global _redis_client
+    if _redis_client is not None:
+        try:
+            await _redis_client.close()
+            logger.info("Redis client closed")
+        except Exception as e:
+            logger.error(f"Error closing Redis client: {e}")
+        finally:
+            _redis_client = None
+
 async def cleanup_websocket_resources():
-    """Clean up WebSocket resources"""
-    global _connection_manager, _processing_progress_emitter, _message_queue
+    """Cleanup WebSocket resources"""
+    global _connection_manager, _message_queue, _processing_progress_emitter
     
-    if _connection_manager:
-        await _connection_manager.stop()
-        _connection_manager = None
-        
-    if _message_queue:
-        await _message_queue.stop()
-        _message_queue = None
-        
-    _processing_progress_emitter = None
-    logger.info("WebSocket resources cleaned up") 
+    try:
+        if _connection_manager is not None:
+            await _connection_manager.stop()
+            logger.info("Connection manager stopped")
+            _connection_manager = None
+            
+        if _message_queue is not None:
+            await _message_queue.stop()
+            logger.info("Message queue stopped")
+            _message_queue = None
+            
+        if _processing_progress_emitter is not None:
+            # No specific cleanup needed for progress emitter
+            _processing_progress_emitter = None
+            
+    except Exception as e:
+        logger.error(f"Error cleaning up WebSocket resources: {e}") 

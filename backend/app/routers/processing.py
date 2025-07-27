@@ -3,9 +3,12 @@ Processing control API endpoints
 """
 
 from fastapi import APIRouter, Depends, HTTPException, status, Query, BackgroundTasks
-from typing import List, Optional
+from fastapi.responses import StreamingResponse
+from typing import List, Optional, AsyncGenerator
 from uuid import UUID
 import logging
+import asyncio
+import json
 
 from app.models.processing import (
     ProcessingRequest, ProcessingResponse, ProcessingStatsResponse,
@@ -421,4 +424,69 @@ async def resume_processing_job(
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail="Failed to resume processing job"
-        ) 
+        )
+
+@router.get("/{document_id}/progress-stream")
+async def stream_processing_progress(
+    document_id: UUID,
+    processing_service: ProcessingService = Depends(get_processing_service)
+):
+    """
+    Stream processing progress updates using Server-Sent Events
+    
+    - **document_id**: Document ID to stream progress for
+    - Returns SSE stream of progress updates
+    """
+    async def event_generator() -> AsyncGenerator[str, None]:
+        """Generate SSE events for processing progress"""
+        try:
+            # Keep connection alive and stream updates
+            while True:
+                # Get current processing status
+                job = await processing_service.get_latest_job(document_id)
+                
+                if job:
+                    # Create SSE event data
+                    event_data = {
+                        "document_id": str(document_id),
+                        "status": job.status,
+                        "progress": job.progress,
+                        "total_zones": job.total_zones,
+                        "completed_zones": job.completed_zones,
+                        "current_zone_id": str(job.current_zone_id) if job.current_zone_id else None,
+                        "error_message": job.error_message,
+                        "is_complete": job.status in ["completed", "failed", "cancelled"]
+                    }
+                    
+                    # Send SSE event
+                    yield f"data: {json.dumps(event_data)}\n\n"
+                    
+                    # If processing is complete, close the stream
+                    if event_data["is_complete"]:
+                        break
+                else:
+                    # No job found, send empty status
+                    yield f"data: {json.dumps({'document_id': str(document_id), 'status': 'not_found'})}\n\n"
+                    break
+                
+                # Wait before next update
+                await asyncio.sleep(1)
+        
+        except asyncio.CancelledError:
+            # Client disconnected
+            logger.info(f"SSE stream cancelled for document {document_id}")
+            raise
+        except Exception as e:
+            logger.error(f"Error in SSE stream for document {document_id}: {str(e)}")
+            # Send error event
+            yield f"data: {json.dumps({'error': str(e)})}\n\n"
+    
+    return StreamingResponse(
+        event_generator(),
+        media_type="text/event-stream",
+        headers={
+            "Cache-Control": "no-cache",
+            "Connection": "keep-alive",
+            "X-Accel-Buffering": "no"  # Disable Nginx buffering
+        }
+    ) 

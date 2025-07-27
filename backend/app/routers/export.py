@@ -4,7 +4,7 @@ Export management API endpoints
 
 from fastapi import APIRouter, Depends, HTTPException, status, Query, BackgroundTasks
 from fastapi.responses import StreamingResponse
-from typing import List, Optional
+from typing import List, Optional, Dict, Any
 from uuid import UUID
 import logging
 
@@ -37,6 +37,9 @@ async def start_export(
     - Returns export job information
     """
     try:
+        # Ensure document_id is set in the request
+        export_request.document_id = document_id
+        
         # Check if document exists
         document_exists = await export_service.document_exists(document_id)
         if not document_exists:
@@ -291,6 +294,113 @@ async def get_document_exports(
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail="Failed to get document exports"
+        )
+
+@router.post("/preview", response_model=Dict[str, Any])
+async def preview_export(
+    export_request: ExportRequest,
+    export_service: ExportService = Depends(get_export_service)
+):
+    """
+    Generate export preview
+    
+    - **export_request**: Export configuration
+    - Returns preview of export data
+    """
+    try:
+        preview = await export_service.generate_preview(export_request)
+        return preview
+    
+    except DocumentNotFoundError as e:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=str(e)
+        )
+    except Exception as e:
+        logger.error(f"Error generating export preview: {str(e)}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Failed to generate export preview"
+        )
+
+@router.post("/generate", response_model=ExportResponse)
+async def generate_export(
+    export_request: ExportRequest,
+    background_tasks: BackgroundTasks,
+    export_service: ExportService = Depends(get_export_service)
+):
+    """
+    Generate export file
+    
+    - **export_request**: Export configuration
+    - Returns export job information
+    """
+    try:
+        # Check if document exists
+        document_id = export_request.document_id
+        document_exists = await export_service.document_exists(document_id)
+        if not document_exists:
+            raise DocumentNotFoundError(str(document_id))
+        
+        # Create export job
+        export_job = await export_service.create_export_job(
+            document_id, export_request
+        )
+        
+        # Queue for background processing
+        background_tasks.add_task(
+            export_service.process_export_background,
+            export_job.id,
+            document_id,
+            export_request
+        )
+        
+        logger.info(
+            f"Export generation started for document {document_id}",
+            extra={
+                "document_id": str(document_id),
+                "export_id": str(export_job.id),
+                "export_type": export_request.export_type,
+                "formats": [f.value for f in export_request.formats]
+            }
+        )
+        
+        return export_job
+    
+    except DocumentNotFoundError:
+        raise
+    except Exception as e:
+        logger.error(f"Error generating export: {str(e)}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Failed to generate export"
+        )
+
+@router.post("/validate")
+async def validate_export_data(
+    export_request: ExportRequest,
+    export_service: ExportService = Depends(get_export_service)
+):
+    """
+    Validate export data before generation
+    
+    - **export_request**: Export configuration to validate
+    - Returns validation results
+    """
+    try:
+        validation_result = await export_service.validate_export_request(export_request)
+        return validation_result
+    
+    except DocumentNotFoundError as e:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=str(e)
+        )
+    except Exception as e:
+        logger.error(f"Error validating export: {str(e)}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Failed to validate export"
         )
 
 @router.post("/bulk", response_model=List[ExportResponse])

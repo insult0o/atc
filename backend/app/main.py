@@ -11,7 +11,7 @@ import time
 import uuid
 import logging
 
-from app.routers import documents, processing, export, websocket
+from app.routers import documents, processing, export, websocket, zones
 from app.middleware.errors import ErrorHandlerMiddleware
 from app.middleware.logging import LoggingMiddleware
 from app.config.settings import get_settings
@@ -91,6 +91,11 @@ api_router.include_router(
     export.router, 
     prefix="/export", 
     tags=["export"]
+)
+api_router.include_router(
+    zones.router,
+    prefix="",  # No prefix as zones endpoints already include /documents and /zones
+    tags=["zones"]
 )
 
 app.include_router(api_router)

@@ -17,8 +17,24 @@ from .processing import (
     ProcessingRequest,
     ProcessingStatus,
     ProcessingResponse,
+    Zone,
     ZoneUpdate,
-    ZoneResponse
+    ZoneResponse,
+    ZoneType,
+    ZoneStatus,
+    ZoneCoordinates
+)
+
+from .zone import (
+    ZoneCreate,
+    ZoneReprocessRequest,
+    ZoneSplitRequest,
+    ZoneMergeRequest,
+    ZoneSplitResponse,
+    ZoneMergeResponse,
+    ZoneListResponse,
+    ZoneBatchUpdateRequest,
+    ZoneBatchUpdateResponse
 )
 
 from .export import (
@@ -50,8 +66,23 @@ __all__ = [
     "ProcessingRequest",
     "ProcessingStatus", 
     "ProcessingResponse",
+    "Zone",
     "ZoneUpdate",
     "ZoneResponse",
+    "ZoneType",
+    "ZoneStatus",
+    "ZoneCoordinates",
+    
+    # Zone models
+    "ZoneCreate",
+    "ZoneReprocessRequest",
+    "ZoneSplitRequest",
+    "ZoneMergeRequest",
+    "ZoneSplitResponse",
+    "ZoneMergeResponse",
+    "ZoneListResponse",
+    "ZoneBatchUpdateRequest",
+    "ZoneBatchUpdateResponse",
     
     # Export models
     "ExportRecord",

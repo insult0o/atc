@@ -106,17 +106,24 @@ export interface ExportFile {
 
 export class ExportAPI {
   /**
-   * Start an export job
+   * Generate export preview
    */
-  async startExport(request: ExportRequest): Promise<ExportResponse> {
-    return apiClient.post<ExportResponse>('/export/start', request);
+  async previewExport(request: ExportRequest): Promise<any> {
+    return apiClient.post('/export/preview', request);
+  }
+
+  /**
+   * Generate export file
+   */
+  async generateExport(request: ExportRequest): Promise<ExportResponse> {
+    return apiClient.post<ExportResponse>('/export/generate', request);
   }
 
   /**
    * Get export status
    */
   async getExportStatus(exportId: string): Promise<APIExportRecord> {
-    return apiClient.get<APIExportRecord>(`/export/status/${exportId}`);
+    return apiClient.get<APIExportRecord>(`/export/${exportId}/status`);
   }
 
   /**
@@ -124,14 +131,11 @@ export class ExportAPI {
    */
   async downloadExport(
     exportId: string,
-    format?: string,
+    format: string,
     filename?: string,
     onProgress?: (progress: number) => void
   ): Promise<Blob> {
-    const endpoint = format 
-      ? `/export/download/${exportId}?format=${format}`
-      : `/export/download/${exportId}`;
-      
+    const endpoint = `/export/${exportId}/download?format=${format}`;
     return apiClient.downloadFile(endpoint, filename, onProgress);
   }
 
@@ -170,7 +174,7 @@ export class ExportAPI {
     documentId: string,
     includeExpired = false
   ): Promise<APIExportRecord[]> {
-    return apiClient.get<APIExportRecord[]>(`/export/document/${documentId}`, {
+    return apiClient.get<APIExportRecord[]>(`/documents/${documentId}/exports`, {
       include_expired: includeExpired
     });
   }

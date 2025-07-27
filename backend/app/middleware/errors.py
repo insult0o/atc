@@ -140,6 +140,26 @@ class StorageError(APIError):
             details={"operation": operation, "details": details}
         )
 
+class InvalidZoneOperationError(APIError):
+    """Invalid zone operation error"""
+    def __init__(self, message: str, details: dict = None):
+        super().__init__(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            error_code="INVALID_ZONE_OPERATION",
+            message=message,
+            details=details or {}
+        )
+
+class ZoneProcessingError(APIError):
+    """Zone processing error"""
+    def __init__(self, message: str, zone_id: str = None, details: dict = None):
+        super().__init__(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            error_code="ZONE_PROCESSING_ERROR",
+            message=message,
+            details={"zone_id": zone_id, **(details or {})}
+        )
+
 class ErrorHandlerMiddleware(BaseHTTPMiddleware):
     """Middleware to handle exceptions and return structured error responses"""
     

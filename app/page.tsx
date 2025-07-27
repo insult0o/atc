@@ -149,7 +149,7 @@ export default function HomePage() {
             © 2025 PDF Intelligence Platform. Powered by cutting-edge AI and modern design.
           </p>
         </div>
-             </footer>
+       </footer>
 
        {/* Status Indicator */}
        <StatusIndicator isConnected={true} status="System Ready" />

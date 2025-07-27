@@ -398,20 +398,27 @@ export function ZoneCreator({
         ref={canvasRef}
         className="absolute inset-0 pointer-events-none z-10"
         style={{ mixBlendMode: 'multiply' }}
+        data-testid="zone-creator-canvas"
       />
       
       {/* Status indicator */}
       {dragState.isCreating && (
-        <div className="absolute top-4 left-4 bg-green-600 text-white px-3 py-1 rounded-full text-sm font-medium shadow-lg z-20">
+        <div 
+          className="absolute top-4 left-4 bg-green-600 text-white px-3 py-1 rounded-full text-sm font-medium shadow-lg z-20"
+          data-testid="zone-creator-status"
+        >
           {dragState.isDragging ? 'Drawing zone...' : 'Click and drag to create zone'}
         </div>
       )}
 
       {/* Preview info */}
       {previewZone && dragState.isDragging && (
-        <div className={`absolute bottom-4 left-4 px-3 py-2 rounded-lg text-sm font-medium shadow-lg z-20 ${
-          previewZone.isValid ? 'bg-green-600 text-white' : 'bg-red-600 text-white'
-        }`}>
+        <div 
+          className={`absolute bottom-4 left-4 px-3 py-2 rounded-lg text-sm font-medium shadow-lg z-20 ${
+            previewZone.isValid ? 'bg-green-600 text-white' : 'bg-red-600 text-white'
+          }`}
+          data-testid="zone-creator-preview"
+        >
           <div>Type: {previewZone.type}</div>
           <div>Size: {Math.round(previewZone.coordinates.width)}×{Math.round(previewZone.coordinates.height)}</div>
           {!previewZone.isValid && (

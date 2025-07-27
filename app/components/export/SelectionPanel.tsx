@@ -1,5 +1,5 @@
 import React, { useState, useCallback, useMemo } from 'react';
-import type { Zone } from '@pdf-platform/shared';
+import type { Zone } from '@/lib/types/zone';
 
 interface SelectionPanelProps {
   zones: Zone[];

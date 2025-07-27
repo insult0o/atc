@@ -1,0 +1,236 @@
+name: E2E Tests
+
+on:
+  push:
+    branches: [main, develop]
+  pull_request:
+    branches: [main, develop]
+  schedule:
+    # Run tests daily at 2 AM UTC
+    - cron: '0 2 * * *'
+  workflow_dispatch:
+    inputs:
+      test-suite:
+        description: 'Test suite to run'
+        required: false
+        default: 'all'
+        type: choice
+        options:
+          - all
+          - quick-extract
+          - detailed-review
+          - collaborative
+          - batch-processing
+          - api-integration
+          - visual-regression
+
+jobs:
+  test:
+    name: E2E Tests
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    
+    strategy:
+      fail-fast: false
+      matrix:
+        shard: [1, 2, 3]
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+      
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+      
+      - name: Install dependencies
+        run: npm ci
+      
+      - name: Setup Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.11'
+          cache: 'pip'
+      
+      - name: Install Python dependencies
+        run: |
+          cd backend
+          pip install -r requirements.txt
+      
+      - name: Install Playwright browsers
+        run: npx playwright install --with-deps chromium
+      
+      - name: Start backend services
+        run: |
+          cd backend
+          uvicorn app.main:app --host 0.0.0.0 --port 8000 &
+          sleep 5
+          curl -f http://localhost:8000/health || exit 1
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_KEY: ${{ secrets.SUPABASE_KEY }}
+      
+      - name: Run E2E tests
+        run: |
+          if [ "${{ github.event.inputs.test-suite }}" = "all" ] || [ -z "${{ github.event.inputs.test-suite }}" ]; then
+            npx playwright test --shard=${{ matrix.shard }}/3
+          else
+            npx playwright test --project=${{ github.event.inputs.test-suite }}
+          fi
+        env:
+          CI: true
+          NODE_ENV: test
+      
+      - name: Upload test results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: test-results-shard-${{ matrix.shard }}
+          path: |
+            test-results/
+            playwright-report/
+          retention-days: 7
+      
+      - name: Upload screenshots on failure
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: failure-screenshots-shard-${{ matrix.shard }}
+          path: test-results/screenshots/
+          retention-days: 7
+  
+  merge-reports:
+    name: Merge Test Reports
+    needs: test
+    runs-on: ubuntu-latest
+    if: always()
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+      
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      
+      - name: Download all test results
+        uses: actions/download-artifact@v4
+        with:
+          pattern: test-results-shard-*
+          merge-multiple: true
+          path: test-results-merged/
+      
+      - name: Merge Playwright reports
+        run: npx playwright merge-reports test-results-merged/
+      
+      - name: Generate summary report
+        run: |
+          node -e "
+          const fs = require('fs');
+          const path = require('path');
+          
+          const reportPath = 'test-results-merged/workflow-report.json';
+          if (fs.existsSync(reportPath)) {
+            const report = JSON.parse(fs.readFileSync(reportPath, 'utf8'));
+            console.log('## E2E Test Results Summary\n');
+            console.log(\`- **Total Tests**: \${report.summary.totalTests}\`);
+            console.log(\`- **Passed**: \${report.summary.passed} ✅\`);
+            console.log(\`- **Failed**: \${report.summary.failed} ❌\`);
+            console.log(\`- **Skipped**: \${report.summary.skipped} ⏭️\`);
+            console.log(\`- **Duration**: \${Math.round(report.summary.duration / 1000)}s\`);
+            console.log('\n### Workflow Results');
+            report.workflows.forEach(w => {
+              console.log(\`- **\${w.workflow}**: \${w.passed}/\${w.totalTests} passed\`);
+            });
+          }
+          " >> $GITHUB_STEP_SUMMARY
+      
+      - name: Upload merged report
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-report
+          path: playwright-report/
+          retention-days: 30
+  
+  visual-regression-check:
+    name: Visual Regression Check
+    needs: test
+    runs-on: ubuntu-latest
+    if: github.event_name == 'pull_request'
+    
+    steps:
+      - name: Checkout base branch
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.base_ref }}
+      
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      
+      - name: Download current screenshots
+        uses: actions/download-artifact@v4
+        with:
+          pattern: test-results-shard-*
+          merge-multiple: true
+          path: test-results-current/
+      
+      - name: Compare screenshots
+        run: |
+          # This would run a visual comparison tool
+          echo "Visual regression check would run here"
+      
+      - name: Comment PR with results
+        if: failure()
+        uses: actions/github-script@v7
+        with:
+          script: |
+            github.rest.issues.createComment({
+              issue_number: context.issue.number,
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              body: '❌ Visual regression detected! Please review the screenshot differences.'
+            })
+  
+  performance-check:
+    name: Performance Check
+    needs: test
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Download test results
+        uses: actions/download-artifact@v4
+        with:
+          pattern: test-results-shard-*
+          merge-multiple: true
+          path: test-results-merged/
+      
+      - name: Analyze performance
+        run: |
+          node -e "
+          const fs = require('fs');
+          const reportPath = 'test-results-merged/workflow-report.json';
+          if (fs.existsSync(reportPath)) {
+            const report = JSON.parse(fs.readFileSync(reportPath, 'utf8'));
+            const slowTests = report.performance.slowestTests.slice(0, 5);
+            if (slowTests.length > 0) {
+              console.log('## ⚡ Performance Report\n');
+              console.log('### Slowest Tests:');
+              slowTests.forEach(t => {
+                console.log(\`- **\${t.name}**: \${Math.round(t.duration / 1000)}s\`);
+              });
+              
+              const avgDuration = Math.round(report.performance.averageDuration / 1000);
+              console.log(\`\n**Average test duration**: \${avgDuration}s\`);
+              
+              if (avgDuration > 10) {
+                console.log('\n⚠️ **Warning**: Average test duration exceeds 10s threshold');
+              }
+            }
+          }
+          " >> $GITHUB_STEP_SUMMARY

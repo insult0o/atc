@@ -56,11 +56,12 @@ class ConnectionManager:
     async def connect(
         self, 
         websocket: WebSocket, 
-        client_id: str, 
         user_id: str,
         metadata: Optional[Dict[str, Any]] = None
-    ):
+    ) -> str:
         """Accept new WebSocket connection and register client"""
+        client_id = str(uuid.uuid4())
+        
         try:
             await websocket.accept()
             
@@ -69,8 +70,12 @@ class ConnectionManager:
             self.user_connections[user_id].add(client_id)
             self.client_metadata[client_id] = {
                 "user_id": user_id,
+                "user_name": metadata.get("user_name", f"User {user_id[:8]}") if metadata else f"User {user_id[:8]}",
+                "user_color": metadata.get("user_color", self._generate_user_color(user_id)) if metadata else self._generate_user_color(user_id),
+                "user_avatar": metadata.get("user_avatar") if metadata else None,
                 "connected_at": datetime.utcnow(),
                 "last_ping": datetime.utcnow(),
+                "rooms": set(),
                 **(metadata or {})
             }
             
@@ -85,13 +90,22 @@ class ConnectionManager:
                     type=EventType.CONNECTION_ESTABLISHED,
                     data={
                         "client_id": client_id,
+                        "user_id": user_id,
                         "server_time": datetime.utcnow().isoformat(),
-                        "capabilities": ["processing_updates", "export_updates", "zone_updates"]
+                        "capabilities": [
+                            "processing_updates", 
+                            "export_updates", 
+                            "zone_updates",
+                            "collaborative_editing",
+                            "user_presence",
+                            "conflict_resolution"
+                        ]
                     }
                 )
             )
             
             logger.info(f"WebSocket connected: {client_id} (user: {user_id})")
+            return client_id
             
         except Exception as e:
             logger.error(f"Error connecting WebSocket {client_id}: {e}")
@@ -186,19 +200,59 @@ class ConnectionManager:
         if client_id in self.active_connections:
             self.rooms[room_id].add(client_id)
             
-            # Notify room members
-            await self.broadcast_to_room(
-                room_id,
-                WebSocketEvent(
-                    type=EventType.USER_JOINED_ROOM,
-                    data={
-                        "client_id": client_id,
-                        "room_id": room_id,
-                        "user_id": self.client_metadata.get(client_id, {}).get("user_id")
-                    }
-                ),
-                exclude_client=client_id
-            )
+            # Update client metadata
+            if client_id in self.client_metadata:
+                if "rooms" not in self.client_metadata[client_id]:
+                    self.client_metadata[client_id]["rooms"] = set()
+                self.client_metadata[client_id]["rooms"].add(room_id)
+            
+            # Get user metadata
+            metadata = self.client_metadata.get(client_id, {})
+            
+            # If this is a document room, broadcast user presence
+            if room_id.startswith("document_"):
+                from .events import UserPresenceEvent
+                
+                # Notify room members about new user
+                await self.broadcast_to_room(
+                    room_id,
+                    UserPresenceEvent(
+                        event_type=EventType.USER_JOINED,
+                        document_id=room_id.replace("document_", ""),
+                        user_id=metadata.get("user_id"),
+                        user_name=metadata.get("user_name"),
+                        user_avatar=metadata.get("user_avatar"),
+                        user_color=metadata.get("user_color")
+                    ),
+                    exclude_client=client_id
+                )
+                
+                # Send current room members to the new user
+                room_members = self.get_room_user_details(room_id)
+                await self.send_personal_message(
+                    client_id,
+                    WebSocketEvent(
+                        type=EventType.USER_PRESENCE_UPDATE,
+                        data={
+                            "room_id": room_id,
+                            "members": room_members
+                        }
+                    )
+                )
+            else:
+                # Standard room join notification
+                await self.broadcast_to_room(
+                    room_id,
+                    WebSocketEvent(
+                        type=EventType.USER_JOINED_ROOM,
+                        data={
+                            "client_id": client_id,
+                            "room_id": room_id,
+                            "user_id": metadata.get("user_id")
+                        }
+                    ),
+                    exclude_client=client_id
+                )
             
             logger.debug(f"Client {client_id} joined room {room_id}")
     
@@ -207,22 +261,43 @@ class ConnectionManager:
         if room_id in self.rooms:
             self.rooms[room_id].discard(client_id)
             
+            # Update client metadata
+            if client_id in self.client_metadata and "rooms" in self.client_metadata[client_id]:
+                self.client_metadata[client_id]["rooms"].discard(room_id)
+            
+            # Get user metadata
+            metadata = self.client_metadata.get(client_id, {})
+            
             # Clean up empty rooms
             if not self.rooms[room_id]:
                 del self.rooms[room_id]
             else:
-                # Notify remaining room members
-                await self.broadcast_to_room(
-                    room_id,
-                    WebSocketEvent(
-                        type=EventType.USER_LEFT_ROOM,
-                        data={
-                            "client_id": client_id,
-                            "room_id": room_id,
-                            "user_id": self.client_metadata.get(client_id, {}).get("user_id")
-                        }
+                # If this is a document room, broadcast user left
+                if room_id.startswith("document_"):
+                    from .events import UserPresenceEvent
+                    
+                    await self.broadcast_to_room(
+                        room_id,
+                        UserPresenceEvent(
+                            event_type=EventType.USER_LEFT,
+                            document_id=room_id.replace("document_", ""),
+                            user_id=metadata.get("user_id"),
+                            user_name=metadata.get("user_name")
+                        )
                     )
-                )
+                else:
+                    # Notify remaining room members
+                    await self.broadcast_to_room(
+                        room_id,
+                        WebSocketEvent(
+                            type=EventType.USER_LEFT_ROOM,
+                            data={
+                                "client_id": client_id,
+                                "room_id": room_id,
+                                "user_id": metadata.get("user_id")
+                            }
+                        )
+                    )
             
             logger.debug(f"Client {client_id} left room {room_id}")
     
@@ -414,6 +489,99 @@ class ConnectionManager:
     def _get_current_time(self) -> str:
         """Get current time as ISO string"""
         return datetime.utcnow().isoformat()
+    
+    def _generate_user_color(self, user_id: str) -> str:
+        """Generate a consistent color for a user based on their ID"""
+        # Use hash to generate consistent color
+        import hashlib
+        hash_value = int(hashlib.md5(user_id.encode()).hexdigest()[:6], 16)
+        
+        # Generate a pleasant color with good contrast
+        hue = hash_value % 360
+        saturation = 70 + (hash_value % 20)  # 70-90%
+        lightness = 45 + (hash_value % 15)   # 45-60%
+        
+        return f"hsl({hue}, {saturation}%, {lightness}%)"
+    
+    def get_room_user_details(self, room_id: str) -> List[Dict[str, Any]]:
+        """Get detailed information about users in a room"""
+        members = []
+        for client_id in self.rooms.get(room_id, set()):
+            metadata = self.client_metadata.get(client_id, {})
+            members.append({
+                "client_id": client_id,
+                "user_id": metadata.get("user_id"),
+                "user_name": metadata.get("user_name"),
+                "user_color": metadata.get("user_color"),
+                "user_avatar": metadata.get("user_avatar"),
+                "connected_at": metadata.get("connected_at").isoformat() if metadata.get("connected_at") else None
+            })
+        return members
+    
+    async def broadcast_user_cursor(
+        self,
+        client_id: str,
+        document_id: str,
+        cursor_position: Dict[str, Any]
+    ):
+        """Broadcast user cursor position to room members"""
+        metadata = self.client_metadata.get(client_id, {})
+        room_id = f"document_{document_id}"
+        
+        from .events import UserPresenceEvent
+        
+        await self.broadcast_to_room(
+            room_id,
+            UserPresenceEvent(
+                event_type=EventType.USER_CURSOR_MOVED,
+                document_id=document_id,
+                user_id=metadata.get("user_id"),
+                user_name=metadata.get("user_name"),
+                user_color=metadata.get("user_color"),
+                cursor_position=cursor_position
+            ),
+            exclude_client=client_id
+        )
+    
+    async def broadcast_zone_update(
+        self,
+        client_id: str,
+        document_id: str,
+        zone_id: str,
+        action: str,
+        zone_data: Optional[Dict[str, Any]] = None,
+        version: Optional[int] = None
+    ):
+        """Broadcast zone updates to room members"""
+        metadata = self.client_metadata.get(client_id, {})
+        room_id = f"document_{document_id}"
+        
+        from .events import ZoneCollaborationEvent
+        
+        # Map action to event type
+        event_type_map = {
+            "create": EventType.ZONE_CREATED,
+            "update": EventType.ZONE_UPDATED,
+            "delete": EventType.ZONE_DELETED,
+            "lock": EventType.ZONE_LOCKED,
+            "unlock": EventType.ZONE_UNLOCKED
+        }
+        
+        event_type = event_type_map.get(action, EventType.ZONE_UPDATED)
+        
+        await self.broadcast_to_room(
+            room_id,
+            ZoneCollaborationEvent(
+                event_type=event_type,
+                document_id=document_id,
+                zone_id=zone_id,
+                user_id=metadata.get("user_id"),
+                action=action,
+                zone_data=zone_data,
+                version=version
+            ),
+            exclude_client=client_id
+        )
 
 
 # Global connection manager instance (for backwards compatibility)

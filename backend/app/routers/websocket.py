@@ -140,6 +140,18 @@ async def handle_client_message(
             # Send current status information
             await handle_status_request(connection_manager, user_id, client_id, data)
             
+        elif message_type == "cursor_move":
+            # Handle cursor movement for collaborative editing
+            await handle_cursor_move(connection_manager, client_id, data)
+            
+        elif message_type == "zone_update":
+            # Handle zone updates for collaborative editing
+            await handle_zone_update(connection_manager, client_id, data)
+            
+        elif message_type == "selection_change":
+            # Handle selection changes for collaborative editing
+            await handle_selection_change(connection_manager, client_id, data)
+            
         else:
             logger.warning(f"Unknown message type '{message_type}' from client {client_id}")
             await connection_manager.send_personal_message(
@@ -513,4 +525,75 @@ async def disconnect_client(
     
     return JSONResponse(content={
         "message": f"Client {client_id} disconnected successfully"
-    }) 
+    })
+
+
+# Collaborative message handlers
+
+async def handle_cursor_move(
+    connection_manager: ConnectionManager,
+    client_id: str,
+    data: Dict[str, Any]
+) -> None:
+    """Handle cursor movement updates"""
+    document_id = data.get("document_id")
+    cursor_position = data.get("cursor_position")
+    
+    if document_id and cursor_position:
+        await connection_manager.broadcast_user_cursor(
+            client_id,
+            document_id,
+            cursor_position
+        )
+
+
+async def handle_zone_update(
+    connection_manager: ConnectionManager,
+    client_id: str,
+    data: Dict[str, Any]
+) -> None:
+    """Handle zone update messages"""
+    document_id = data.get("document_id")
+    zone_id = data.get("zone_id")
+    action = data.get("action")
+    zone_data = data.get("zone_data")
+    version = data.get("version")
+    
+    if document_id and zone_id and action:
+        await connection_manager.broadcast_zone_update(
+            client_id,
+            document_id,
+            zone_id,
+            action,
+            zone_data,
+            version
+        )
+
+
+async def handle_selection_change(
+    connection_manager: ConnectionManager,
+    client_id: str,
+    data: Dict[str, Any]
+) -> None:
+    """Handle selection change updates"""
+    document_id = data.get("document_id")
+    selection = data.get("selection")
+    
+    if document_id and selection:
+        metadata = connection_manager.client_metadata.get(client_id, {})
+        room_id = f"document_{document_id}"
+        
+        from ..websocket.events import UserPresenceEvent
+        
+        await connection_manager.broadcast_to_room(
+            room_id,
+            UserPresenceEvent(
+                event_type=EventType.USER_SELECTION_CHANGED,
+                document_id=document_id,
+                user_id=metadata.get("user_id"),
+                user_name=metadata.get("user_name"),
+                user_color=metadata.get("user_color"),
+                selection=selection
+            ),
+            exclude_client=client_id
+        ) 

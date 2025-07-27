@@ -520,15 +520,16 @@ export function ZoneManager({
   const selectedZoneData = selectedZone ? zones.find(z => z.id === selectedZone) : null;
 
   return (
-    <div className="zone-manager flex flex-col h-full">
+    <div className="zone-manager flex flex-col h-full" data-testid="zone-manager">
       {/* Toolbar */}
-      <div className="zone-toolbar flex items-center gap-2 p-2 border-b bg-gray-50">
+      <div className="zone-toolbar flex items-center gap-2 p-2 border-b bg-gray-50" data-testid="zone-toolbar">
         <div className="edit-modes flex gap-1">
           <Button
             variant={interaction.editMode === 'select' ? 'default' : 'outline'}
             size="sm"
             onClick={() => setInteraction(prev => ({ ...prev, editMode: 'select' }))}
             disabled={readonly}
+            data-testid="zone-mode-select"
           >
             Select
           </Button>
@@ -537,6 +538,7 @@ export function ZoneManager({
             size="sm"
             onClick={() => setInteraction(prev => ({ ...prev, editMode: 'create' }))}
             disabled={readonly}
+            data-testid="zone-mode-create"
           >
             Create
           </Button>
@@ -549,6 +551,7 @@ export function ZoneManager({
             value={zoneFilter}
             onChange={(e) => setZoneFilter(e.target.value)}
             className="px-2 py-1 text-sm border rounded"
+            data-testid="zone-filter-select"
           >
             <option value="all">All Types</option>
             <option value="text">Text</option>
@@ -605,13 +608,14 @@ export function ZoneManager({
       {/* Main content area */}
       <div className="zone-content flex flex-1 overflow-hidden">
         {/* Zone canvas */}
-        <div ref={containerRef} className="zone-canvas flex-1 relative overflow-auto">
+        <div ref={containerRef} className="zone-canvas flex-1 relative overflow-auto" data-testid="zone-canvas-container">
           <canvas
             ref={canvasRef}
             className="absolute inset-0 cursor-crosshair"
             onMouseDown={handleMouseDown}
             onMouseMove={handleMouseMove}
             onMouseUp={handleMouseUp}
+            data-testid="zone-canvas"
           />
         </div>
 

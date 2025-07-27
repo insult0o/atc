@@ -82,10 +82,17 @@ export class DocumentAPI {
    * Get document status (lightweight version)
    */
   async getDocumentStatus(documentId: string): Promise<{
-    id: string;
+    document_id: string;
     status: string;
-    progress_percentage?: number;
+    processing_started_at?: string;
+    processing_completed_at?: string;
+    progress: number;
+    current_zone_id?: string;
+    total_zones: number;
+    completed_zones: number;
     error_message?: string;
+    is_complete: boolean;
+    processing_status: string;
   }> {
     return apiClient.get(`/documents/${documentId}/status`);
   }
